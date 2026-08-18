@@ -1,0 +1,20 @@
+{
+  "name": "Attendance QR - نظام حضور الطلاب",
+  "short_name": "Attendance QR",
+  "description": "نظام إدارة حضور وغياب الطلاب الذكي بالكارنيه للخدام والمسؤولين",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#4338ca",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%234338ca'/><path d='M120 120h100v100H120zm172 0h100v100H292zM120 292h100v100H120zm172 172h60v-60h-60zm40-100h60v-60h-60zm-40 0h-60v60h60zm100 40h-40v60h40z' fill='%23fbbf24'/><path d='M256 90v332M90 200h332' stroke='%23ffffff' stroke-width='14' stroke-linecap='round'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

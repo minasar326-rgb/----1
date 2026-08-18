@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إدارة الطلاب والكارنيهات - Attendance QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+  <!-- HTML5 QR Code Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo"><i class="fa-solid fa-church"></i></div>
+        <div class="brand-info">
+          <span class="brand-title">Attendance QR</span>
+          <span class="brand-subtitle">كنيسة مارمينا العجايبي</span>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <div class="menu-category">القائمة الرئيسية</div>
+        <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-chart-pie"></i><span>لوحة التحكم</span></a>
+        <a href="students.html" class="nav-link active"><i class="fa-solid fa-users"></i><span>إدارة الطلاب</span></a>
+        <div class="menu-category">تسجيل الحضور بالـ QR</div>
+        <a href="attendance.html" class="nav-link"><i class="fa-solid fa-qrcode"></i><span>تسجيل الحضور اليومي</span></a>
+        <div class="menu-category">التقارير والإعدادات</div>
+        <a href="reports.html" class="nav-link"><i class="fa-solid fa-file-word"></i><span>التقارير وتصدير Word</span></a>
+        <a href="settings.html" class="nav-link"><i class="fa-solid fa-sliders"></i><span>المواعيد والإعدادات</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">A</div>
+          <div class="user-details"><span class="user-name">مسؤول النظام</span><span class="user-role">إعداد خدام</span></div>
+        </div>
+        <button class="btn-icon" data-action="logout" title="تسجيل الخروج" style="color: var(--danger-600);"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle btn-icon" id="mobile-menu-toggle"><i class="fa-solid fa-bars"></i></button>
+          <h2>سجل الطلاب والكارنيهات</h2>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-primary" id="open-add-student-modal-btn">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>إضافة طالب جديد</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <!-- Search and Filters Bar with Smart Autocomplete -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-body" style="padding: 1.25rem;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: center;" class="filter-grid">
+              <div class="input-with-icon" style="position: relative;">
+                <input type="text" id="search-input" class="form-control" placeholder="ابحث باسم الطالب (مثال: مينا)، أو كود الطالب..." autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass input-icon"></i>
+              </div>
+              <div>
+                <select id="grade-filter" class="form-control">
+                  <option value="">جميع المراحل</option>
+                </select>
+              </div>
+              <div>
+                <select id="status-filter" class="form-control">
+                  <option value="">جميع الحالات</option>
+                  <option value="active">النشطين فقط</option>
+                  <option value="inactive">المعطلين</option>
+                </select>
+              </div>
+              <button id="reset-filters-btn" class="btn btn-outline btn-icon" title="إعادة تعيين الفلاتر">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Students Table Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fa-solid fa-address-book text-primary"></i>
+              <span>قائمة الطلاب المسجلين (<span id="students-count">0</span>)</span>
+            </h2>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>اسم الطالب</th>
+                  <th>كود الطالب (Code)</th>
+                  <th>المرحلة / الصف</th>
+                  <th>رمز الكارنيه (QR ID)</th>
+                  <th>رقم الهاتف</th>
+                  <th>الحالة</th>
+                  <th style="text-align: center;">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="students-table-tbody">
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 3rem;">
+                    <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="mobile-bottom-nav">
+      <a href="dashboard.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
+      <a href="attendance.html?day=thursday" class="mobile-nav-item"><i class="fa-solid fa-qrcode"></i><span>الخميس</span></a>
+      <a href="attendance.html?day=friday" class="mobile-nav-item"><i class="fa-solid fa-cross"></i><span>الجمعة</span></a>
+      <a href="students.html" class="mobile-nav-item active"><i class="fa-solid fa-users"></i><span>الطلاب</span></a>
+      <a href="reports.html" class="mobile-nav-item"><i class="fa-solid fa-file-word"></i><span>التقارير</span></a>
+    </nav>
+  </div>
+
+  <!-- Add / Edit Student Modal -->
+  <div class="modal-backdrop" id="student-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">
+          <i class="fa-solid fa-user-plus text-primary"></i>
+          <span>إضافة طالب جديد</span>
+        </h3>
+        <button class="btn-icon" data-modal-close>&times;</button>
+      </div>
+      <form id="student-form">
+        <div class="modal-body">
+          <input type="hidden" id="student-edit-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="student-name-input">
+              <i class="fa-solid fa-user text-primary"></i> اسم الطالب ثلاثي أو رباعي <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="student-name-input" class="form-control" placeholder="مثال: مينا سورياني غبريال" required>
+          </div>
+
+          <!-- Dedicated Unique Student Code Field -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <label class="form-label" for="student-code-input" style="margin-bottom: 0;">
+                <i class="fa-solid fa-id-card text-primary"></i> كود الطالب / Student Code <span class="text-danger">*</span>
+              </label>
+              <button type="button" class="btn btn-outline btn-sm" id="generate-code-btn" title="توليد كود تلقائي" style="padding: 2px 8px; font-size: 0.75rem;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> توليد كود
+              </button>
+            </div>
+            <input 
+              type="text" 
+              id="student-code-input" 
+              class="form-control" 
+              placeholder="مثال: STU-1001" 
+              required
+              style="font-family: monospace; font-size: 1rem; font-weight: 700; color: var(--primary-700);"
+            >
+            <div id="code-validation-status" style="font-size: 0.8rem; font-weight: 600; min-height: 18px; margin-top: 4px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="student-grade-input">
+              <i class="fa-solid fa-graduation-cap text-primary"></i> المرحلة / الصف الدراسي <span class="text-danger">*</span>
+            </label>
+            <select id="student-grade-input" class="form-control" required>
+              <option value="">اختر المرحلة</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="student-phone-input">
+              <i class="fa-solid fa-phone text-primary"></i> رقم الهاتف (اختياري)
+            </label>
+            <input type="tel" id="student-phone-input" class="form-control" placeholder="01xxxxxxxxx">
+          </div>
+
+          <!-- QR Binding Box with Manual Code Input + Camera Scan -->
+          <div style="background: var(--bg-surface-subtle); border: 2px dashed var(--primary-300); border-radius: var(--radius-lg); padding: 1.25rem; margin-top: 1rem;">
+            <div style="font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
+              <span><i class="fa-solid fa-qrcode text-gold"></i> رمز الكارنيه المطبوع (QR ID)</span>
+              <button type="button" class="btn btn-outline btn-sm" id="copy-code-to-qr-btn" title="مطابقة رمز الكارنيه مع كود الطالب" style="padding: 2px 8px; font-size: 0.75rem;">
+                <i class="fa-solid fa-copy"></i> نفس كود الطالب
+              </button>
+            </div>
+            <p class="text-muted text-sm" style="margin-bottom: 0.875rem;">
+              يمكنك كتابة كود الكارنيه يدوياً أو مسحه بالكاميرا مباشرة:
+            </p>
+
+            <div class="flex gap-2" style="margin-bottom: 0.75rem;">
+              <div class="input-with-icon flex-1">
+                <input 
+                  type="text" 
+                  id="student-qr-input" 
+                  class="form-control" 
+                  placeholder="مثال: STU-92841" 
+                  style="font-family: monospace; font-size: 1rem; font-weight: 700; color: var(--accent-gold-700);"
+                >
+                <i class="fa-solid fa-barcode input-icon"></i>
+              </div>
+              <button type="button" class="btn btn-gold" id="start-modal-scan-btn">
+                <i class="fa-solid fa-camera"></i>
+                <span id="scan-btn-text">مسح بالكاميرا</span>
+              </button>
+            </div>
+
+            <div id="qr-validation-status" style="font-size: 0.85rem; font-weight: 600; min-height: 20px;"></div>
+
+            <!-- Modal Inline Scanner Area -->
+            <div id="modal-camera-container" style="display: none; margin-top: 1rem; border-radius: var(--radius-md); overflow: hidden; max-width: 320px; margin-left: auto; margin-right: auto; position: relative;">
+              <div id="modal-qr-reader" style="width: 100%;"></div>
+              <button type="button" class="btn btn-danger btn-sm w-full" id="stop-modal-scan-btn" style="margin-top: 0.5rem;">
+                <i class="fa-solid fa-circle-xmark"></i> إغلاق الكاميرا
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close>إلغاء</button>
+          <button type="submit" class="btn btn-primary" id="save-student-btn">
+            <i class="fa-solid fa-check"></i>
+            <span>تأكيد وحفظ الطالب</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import "./js/app.js";
+    import { getAllStudents, addStudent, updateStudent, toggleStudentStatus, deleteStudent, isStudentCodeAvailable, isQrCodeAvailable } from "./js/students.js";
+    import { GRADES, openModal, closeModal, showToast } from "./js/utils.js";
+    import { initScanner, stopScanner } from "./js/scanner.js";
+    import { initStudentAutocomplete } from "./js/autocomplete.js";
+
+    let allStudentsList = [];
+
+    // Populate grade dropdowns
+    const gradeFilter = document.getElementById("grade-filter");
+    const studentGradeInput = document.getElementById("student-grade-input");
+    GRADES.forEach(g => {
+      gradeFilter.innerHTML += `<option value="${g}">${g}</option>`;
+      studentGradeInput.innerHTML += `<option value="${g}">${g}</option>`;
+    });
+
+    async function loadStudents() {
+      allStudentsList = await getAllStudents();
+      renderStudentsTable();
+    }
+
+    function renderStudentsTable() {
+      const tbody = document.getElementById("students-table-tbody");
+      const search = document.getElementById("search-input").value.trim().toLowerCase();
+      const grade = gradeFilter.value;
+      const status = document.getElementById("status-filter").value;
+
+      const filtered = allStudentsList.filter(s => {
+        const sCode = (s.studentCode || s.studentId || "").toLowerCase();
+        const matchSearch = !search || 
+          s.name.toLowerCase().includes(search) || 
+          sCode.includes(search) ||
+          (s.qrId && s.qrId.toLowerCase().includes(search)) ||
+          (s.phone && s.phone.includes(search));
+        const matchGrade = !grade || s.grade === grade;
+        const matchStatus = !status || s.status === status;
+        return matchSearch && matchGrade && matchStatus;
+      });
+
+      document.getElementById("students-count").textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <i class="fa-solid fa-user-slash empty-state-icon"></i>
+                <h3 class="empty-state-title">لا يوجد طلاب مطابقين للبحث</h3>
+                <p class="empty-state-desc">جرب تعديل كلمات البحث أو إضافة طالب جديد للنظام.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(s => `
+        <tr>
+          <td>
+            <a href="student.html?id=${s.studentId}" style="font-weight: 700; color: var(--primary-600);">
+              <i class="fa-solid fa-user text-primary" style="margin-left: 6px;"></i> ${s.name}
+            </a>
+          </td>
+          <td><strong style="color: var(--primary-700); font-family: monospace;"><i class="fa-solid fa-id-card"></i> ${s.studentCode || s.studentId}</strong></td>
+          <td><span class="badge badge-none">${s.grade}</span></td>
+          <td><span style="color: var(--accent-gold-600); font-family: monospace;"><i class="fa-solid fa-qrcode"></i> ${s.qrId}</span></td>
+          <td>${s.phone || '<span class="text-muted">—</span>'}</td>
+          <td>
+            <span class="badge ${s.status === 'active' ? 'badge-active' : 'badge-inactive'}">
+              ${s.status === 'active' ? 'نشط' : 'معطل'}
+            </span>
+          </td>
+          <td style="text-align: center; white-space: nowrap;">
+            <a href="student.html?id=${s.studentId}" class="btn btn-outline btn-sm" title="عرض السجل والتقرير">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+            <button class="btn btn-outline btn-sm edit-student-btn" data-id="${s.studentId}" title="تعديل">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button class="btn btn-outline btn-sm toggle-status-btn" data-id="${s.studentId}" data-status="${s.status}" title="${s.status === 'active' ? 'تعطيل الطالب' : 'تفعيل الطالب'}">
+              <i class="fa-solid ${s.status === 'active' ? 'fa-user-slash text-danger' : 'fa-user-check text-success'}"></i>
+            </button>
+            <button class="btn btn-outline btn-sm delete-student-btn" data-id="${s.studentId}" data-name="${s.name}" title="حذف نهائي" style="color: var(--danger-600);">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        </tr>
+      `).join("");
+
+      attachTableActionListeners();
+    }
+
+    function attachTableActionListeners() {
+      document.querySelectorAll(".edit-student-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const student = allStudentsList.find(s => s.studentId === btn.dataset.id);
+          if (student) openEditModal(student);
+        });
+      });
+
+      document.querySelectorAll(".toggle-status-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await toggleStudentStatus(btn.dataset.id, btn.dataset.status);
+          await loadStudents();
+        });
+      });
+
+      document.querySelectorAll(".delete-student-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const name = btn.dataset.name;
+          if (confirm(`هل أنت متأكد تمامًا من حذف الطالب (${name}) نهائيًا من النظام؟\nلن يمكن التراجع عن هذا الإجراء.`)) {
+            await deleteStudent(btn.dataset.id);
+            await loadStudents();
+          }
+        });
+      });
+    }
+
+    // Modal Add / Edit Student Logic
+    const studentModal = document.getElementById("student-modal");
+    const studentForm = document.getElementById("student-form");
+    const openAddBtn = document.getElementById("open-add-student-modal-btn");
+    const modalTitle = document.getElementById("modal-title");
+    const editIdInput = document.getElementById("student-edit-id");
+    const nameInput = document.getElementById("student-name-input");
+    const codeInput = document.getElementById("student-code-input");
+    const codeValidationStatus = document.getElementById("code-validation-status");
+    const generateCodeBtn = document.getElementById("generate-code-btn");
+    const phoneInput = document.getElementById("student-phone-input");
+    const qrInput = document.getElementById("student-qr-input");
+    const qrValidationStatus = document.getElementById("qr-validation-status");
+    const copyCodeToQrBtn = document.getElementById("copy-code-to-qr-btn");
+    const startModalScanBtn = document.getElementById("start-modal-scan-btn");
+    const modalCameraContainer = document.getElementById("modal-camera-container");
+    const stopModalScanBtn = document.getElementById("stop-modal-scan-btn");
+
+    openAddBtn.addEventListener("click", () => {
+      modalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-primary"></i> <span>إضافة طالب جديد</span>`;
+      studentForm.reset();
+      editIdInput.value = "";
+      studentGradeInput.value = GRADES[0] || "ثانوي - أولى ثانوي";
+      codeInput.value = `STU-${Math.floor(1000 + Math.random() * 9000)}`;
+      qrInput.value = codeInput.value;
+      codeValidationStatus.innerHTML = "";
+      qrValidationStatus.innerHTML = "";
+      modalCameraContainer.style.display = "none";
+      openModal("student-modal");
+      setTimeout(() => nameInput.focus(), 150);
+    });
+
+    function openEditModal(student) {
+      modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-primary"></i> <span>تعديل بيانات الطالب</span>`;
+      editIdInput.value = student.studentId;
+      nameInput.value = student.name;
+      codeInput.value = student.studentCode || student.studentId;
+      studentGradeInput.value = student.grade;
+      phoneInput.value = student.phone || "";
+      qrInput.value = student.qrId || "";
+      codeValidationStatus.innerHTML = `<span class="text-success"><i class="fa-solid fa-check"></i> الكود الحالي</span>`;
+      qrValidationStatus.innerHTML = `<span class="text-success"><i class="fa-solid fa-check"></i> الكارنيه الحالي: ${student.qrId}</span>`;
+      modalCameraContainer.style.display = "none";
+      openModal("student-modal");
+    }
+
+    // Auto-generate student code helper
+    generateCodeBtn.addEventListener("click", async () => {
+      const randomCode = `STU-${Math.floor(1000 + Math.random() * 9000)}`;
+      codeInput.value = randomCode;
+      qrInput.value = randomCode;
+      await checkCodeInputValidity();
+    });
+
+    copyCodeToQrBtn.addEventListener("click", () => {
+      qrInput.value = codeInput.value;
+      checkQrInputValidity();
+    });
+
+    // Real-time Student Code validation
+    async function checkCodeInputValidity() {
+      const code = codeInput.value.trim();
+      const editId = editIdInput.value;
+      if (!code) {
+        codeValidationStatus.innerHTML = "";
+        return false;
+      }
+      const isAvail = await isStudentCodeAvailable(code, editId);
+      if (!isAvail) {
+        codeValidationStatus.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> هذا الكود مسجل بالفعل لطالب آخر.</span>`;
+        return false;
+      } else {
+        codeValidationStatus.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check"></i> كود الطالب متاح وفريد ✅</span>`;
+        return true;
+      }
+    }
+
+    codeInput.addEventListener("input", checkCodeInputValidity);
+
+    // Real-time QR validation on typing
+    async function checkQrInputValidity() {
+      const code = qrInput.value.trim();
+      const editId = editIdInput.value;
+      if (!code) {
+        qrValidationStatus.innerHTML = "";
+        return true;
+      }
+      const isAvail = await isQrCodeAvailable(code, editId);
+      if (!isAvail) {
+        qrValidationStatus.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> هذا الكارنيه مرتبط بالفعل بطالب آخر.</span>`;
+        return false;
+      } else {
+        qrValidationStatus.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check"></i> الكود متاح وجاهز للربط ✅</span>`;
+        return true;
+      }
+    }
+
+    qrInput.addEventListener("input", checkQrInputValidity);
+
+    // Modal Camera QR Scanner
+    startModalScanBtn.addEventListener("click", async () => {
+      modalCameraContainer.style.display = "block";
+      await initScanner("modal-qr-reader", async (decodedText) => {
+        const qrCode = decodedText.trim();
+        const editId = editIdInput.value;
+
+        const isAvail = await isQrCodeAvailable(qrCode, editId);
+        if (!isAvail) {
+          showToast("هذا الكارنيه مرتبط بالفعل بطالب آخر.", "error");
+          qrValidationStatus.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> هذا الكارنيه مرتبط بالفعل بطالب آخر.</span>`;
+          return;
+        }
+
+        qrInput.value = qrCode;
+        qrValidationStatus.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check"></i> تم قراءة الكارنيه بنجاح: ${qrCode} ✅</span>`;
+        showToast(`تم قراءة الكارنيه بنجاح: ${qrCode}`, "success");
+        await stopScanner();
+        modalCameraContainer.style.display = "none";
+      });
+    });
+
+    stopModalScanBtn.addEventListener("click", async () => {
+      await stopScanner();
+      modalCameraContainer.style.display = "none";
+    });
+
+    // Wire Modal Close buttons
+    document.querySelectorAll("[data-modal-close]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        stopScanner();
+        modalCameraContainer.style.display = "none";
+        closeModal("student-modal");
+      });
+    });
+
+    // Handle Form Submit
+    studentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("save-student-btn");
+      const originalBtnHtml = saveBtn.innerHTML;
+
+      const editId = editIdInput.value;
+      const name = nameInput.value.trim();
+      const studentCode = codeInput.value.trim();
+      const grade = studentGradeInput.value;
+      const phone = phoneInput.value.trim();
+      const qrId = (qrInput.value.trim()) || studentCode;
+
+      if (!name) {
+        showToast("يرجى إدخال اسم الطالب", "warning");
+        nameInput.focus();
+        return;
+      }
+
+      if (!grade) {
+        showToast("يرجى اختيار المرحلة الدراسية", "warning");
+        studentGradeInput.focus();
+        return;
+      }
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>جارٍ الحفظ...</span>`;
+
+        if (editId) {
+          const success = await updateStudent(editId, { name, studentCode, grade, phone, qrId });
+          if (success) {
+            await stopScanner();
+            modalCameraContainer.style.display = "none";
+            closeModal("student-modal");
+            studentForm.reset();
+            await loadStudents();
+          }
+        } else {
+          // Add new
+          const newStudent = await addStudent({ name, studentCode, grade, phone, qrId });
+          if (newStudent) {
+            await stopScanner();
+            modalCameraContainer.style.display = "none";
+            closeModal("student-modal");
+            studentForm.reset();
+            await loadStudents();
+          }
+        }
+      } catch (err) {
+        console.error("Save error:", err);
+        showToast("حدث خطأ أثناء الحفظ. يرجى المحاولة مرة أخرى.", "error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalBtnHtml;
+      }
+    });
+
+    // Attach Smart Autocomplete to search input
+    initStudentAutocomplete({
+      input: "#search-input",
+      placeholder: "ابحث بالاسم أو كود الطالب...",
+      onSelect: (student) => {
+        document.getElementById("search-input").value = student.name;
+        renderStudentsTable();
+      }
+    });
+
+    // Filter listeners
+    document.getElementById("search-input").addEventListener("input", renderStudentsTable);
+    gradeFilter.addEventListener("change", renderStudentsTable);
+    document.getElementById("status-filter").addEventListener("change", renderStudentsTable);
+    document.getElementById("reset-filters-btn").addEventListener("click", () => {
+      document.getElementById("search-input").value = "";
+      gradeFilter.value = "";
+      document.getElementById("status-filter").value = "";
+      renderStudentsTable();
+    });
+
+    // Auto open add modal if url has ?action=new
+    if (new URLSearchParams(window.location.search).get("action") === "new") {
+      openAddBtn.click();
+    }
+
+    window.addEventListener('church_students_updated', () => loadStudents());
+
+    loadStudents();
+  </script>
+</body>
+</html>

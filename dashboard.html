@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم - Attendance QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <i class="fa-solid fa-church"></i>
+        </div>
+        <div class="brand-info">
+          <span class="brand-title">Attendance QR</span>
+          <span class="brand-subtitle">كنيسة مارمينا العجايبي</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <div class="menu-category">القائمة الرئيسية</div>
+        <a href="dashboard.html" class="nav-link active">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>لوحة التحكم</span>
+        </a>
+        <a href="students.html" class="nav-link">
+          <i class="fa-solid fa-users"></i>
+          <span>إدارة الطلاب</span>
+        </a>
+
+        <div class="menu-category">تسجيل الحضور بالـ QR</div>
+        <a href="attendance.html" class="nav-link">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>تسجيل الحضور اليومي</span>
+        </a>
+
+        <div class="menu-category">التقارير والإعدادات</div>
+        <a href="reports.html" class="nav-link">
+          <i class="fa-solid fa-file-word"></i>
+          <span>التقارير وتصدير Word</span>
+        </a>
+        <a href="settings.html" class="nav-link">
+          <i class="fa-solid fa-sliders"></i>
+          <span>المواعيد والإعدادات</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">A</div>
+          <div class="user-details">
+            <span class="user-name">مسؤول النظام</span>
+            <span class="user-role">إعداد خدام</span>
+          </div>
+        </div>
+        <button class="btn-icon" data-action="logout" title="تسجيل الخروج" style="color: var(--danger-600);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle btn-icon" id="mobile-menu-toggle">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div id="current-date-display" class="text-muted text-sm" style="font-weight: 600;">
+            <i class="fa-regular fa-calendar text-primary"></i> <span id="arabic-date-text">...</span>
+          </div>
+        </div>
+
+        <div class="topbar-right flex gap-2">
+          <div style="position: relative; width: 220px;" class="no-print">
+            <input type="text" id="topbar-search-input" class="form-control" placeholder="بحث سريع عن طالب..." style="padding: 0.35rem 0.75rem; font-size: 0.85rem;" autocomplete="off">
+          </div>
+          <a href="students.html?action=new" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>إضافة طالب</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <main class="page-content">
+        <!-- Church Banner with Multi-Year Week Picker -->
+        <div class="page-header" style="background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%); color: white; padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 1.5rem;">
+          <div>
+            <div style="color: var(--accent-gold-400); font-weight: 700; font-size: 0.95rem; margin-bottom: 0.25rem;">
+              <i class="fa-solid fa-cross"></i> إعداد خدام
+            </div>
+            <h1 class="page-title" style="color: white; font-size: 1.65rem; margin-bottom: 0.35rem;">
+              كنيسة مارمينا العجايبي بكوم المحرص
+            </h1>
+            <p class="page-subtitle" style="color: var(--primary-100);">نظام متابعة وإدارة الحضور والغياب لجميع أيام الأسبوع ولمدة سنوات قادمة</p>
+          </div>
+          
+          <div class="flex gap-2" style="align-items: center; flex-wrap: wrap;">
+            <div style="background: rgba(255, 255, 255, 0.12); padding: 0.35rem 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 0.5rem;">
+              <label for="dashboard-week-select" style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0; color: var(--accent-gold-300); white-space: nowrap;">
+                الأسبوع:
+              </label>
+              <select id="dashboard-week-select" class="form-control form-control-sm" style="background: white; color: var(--primary-900); font-weight: 700; min-width: 190px;">
+                <!-- Populated dynamically across multiple years -->
+              </select>
+            </div>
+
+            <a href="attendance.html" class="btn btn-gold btn-sm">
+              <i class="fa-solid fa-qrcode"></i>
+              <span>تسجيل الحضور اليومي</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- KPI Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي الطلاب</span>
+              <span class="stat-value" id="kpi-total-students">0</span>
+              <span class="stat-subtext" id="kpi-active-students">0 نشط في النظام</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+              <i class="fa-solid fa-user-check"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي جلسات الحضور</span>
+              <span class="stat-value" id="kpi-week-present">0</span>
+              <span class="stat-subtext" id="kpi-current-week-label">الأسبوع المختار</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+              <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي جلسات الغياب</span>
+              <span class="stat-value" id="kpi-week-absent">0</span>
+              <span class="stat-subtext" id="kpi-absent-rate">نسبة الغياب: 0%</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-gold">
+              <i class="fa-solid fa-percent"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">نسبة الحضور العامة</span>
+              <span class="stat-value" id="kpi-attendance-rate">0%</span>
+              <span class="stat-subtext">معدل التزام الطلاب</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7-Day Attendance Mini Bar -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-header" style="padding: 0.85rem 1.25rem;">
+            <h3 class="card-title text-sm">
+              <i class="fa-solid fa-calendar-week text-primary"></i>
+              <span>معدل الحضور اليومي للأسبوع المختار (جميع أيام الأسبوع السبعة)</span>
+            </h3>
+          </div>
+          <div class="card-body" style="padding: 1rem 1.25rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; text-align: center;">
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">السبت <span style="color:var(--primary-600);">(العشية)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-saturday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">الأحد <span style="color:var(--primary-600);">(القداس)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-sunday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">الإثنين <span style="color:var(--primary-600);">(الماراثون)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-monday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">الثلاثاء <span style="color:var(--primary-600);">(الماراثون)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-tuesday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">الأربعاء <span style="color:var(--primary-600);">(القداس)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-wednesday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">الخميس <span style="color:var(--primary-600);">(تسبيحة/محاضرة)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-thursday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+              <div style="background: var(--bg-surface-subtle); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <div class="text-xs text-muted" style="font-weight: 700;">الجمعة <span style="color:var(--primary-600);">(قداس/درس)</span></div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #059669;" id="day-stat-friday">0</div>
+                <div class="text-xs text-muted">حاضر</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;" class="charts-container">
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <h2 class="card-title">
+                <i class="fa-solid fa-chart-line text-primary"></i>
+                <span>معدل الحضور اليومي للأسبوع المختار</span>
+              </h2>
+            </div>
+            <div class="card-body">
+              <div style="height: 280px; position: relative;">
+                <canvas id="weeklyAttendanceChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <h2 class="card-title">
+                <i class="fa-solid fa-chart-pie text-gold"></i>
+                <span>توزيع الطلاب حسب المراحل</span>
+              </h2>
+            </div>
+            <div class="card-body">
+              <div style="height: 280px; position: relative;">
+                <canvas id="gradeDistributionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Registrations Activity Table -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+              <span>آخر عمليات تسجيل الحضور للأسبوع</span>
+            </h2>
+            <a href="reports.html" class="btn btn-outline btn-sm">عرض جدول الأسبوع الشامل</a>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>اسم الطالب</th>
+                  <th>كود الطالب</th>
+                  <th>المرحلة</th>
+                  <th>اليوم المسجل</th>
+                  <th>حالة الحضور</th>
+                </tr>
+              </thead>
+              <tbody id="recent-attendance-tbody">
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 2rem;">
+                    <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+      <a href="dashboard.html" class="mobile-nav-item active">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>الرئيسية</span>
+      </a>
+      <a href="attendance.html" class="mobile-nav-item">
+        <i class="fa-solid fa-qrcode"></i>
+        <span>تسجيل الحضور</span>
+      </a>
+      <a href="students.html" class="mobile-nav-item">
+        <i class="fa-solid fa-users"></i>
+        <span>الطلاب</span>
+      </a>
+      <a href="reports.html" class="mobile-nav-item">
+        <i class="fa-solid fa-file-word"></i>
+        <span>التقارير</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <script type="module">
+    import "./js/app.js";
+    import { getAllStudents } from "./js/students.js";
+    import { getWeeklyAttendanceMatrix, getPartName } from "./js/attendance.js";
+    import { getCurrentWeekId, getWeekDetails, getPastWeeks, formatDateArabic } from "./js/utils.js";
+    import { initStudentAutocomplete } from "./js/autocomplete.js";
+
+    document.getElementById("arabic-date-text").textContent = formatDateArabic(new Date());
+
+    let selectedWeekId = getCurrentWeekId();
+    let weeklyChartInstance = null;
+    let gradeChartInstance = null;
+
+    // Populate Multi-Year Week Dropdown (covers multi-year span)
+    const weekSelect = document.getElementById("dashboard-week-select");
+    const multiYearWeeks = getPastWeeks(52, 52);
+    weekSelect.innerHTML = multiYearWeeks.map(w => `
+      <option value="${w.weekId}" ${w.weekId === selectedWeekId ? 'selected' : ''}>
+        ${w.label}
+      </option>
+    `).join("");
+
+    weekSelect.addEventListener("change", () => {
+      selectedWeekId = weekSelect.value;
+      loadDashboardData();
+    });
+
+    // Attach Autocomplete to topbar search
+    initStudentAutocomplete({
+      input: "#topbar-search-input",
+      placeholder: "بحث سريع عن طالب...",
+      onSelect: (student) => {
+        window.location.href = `student.html?id=${student.studentId}`;
+      }
+    });
+
+    async function loadDashboardData() {
+      try {
+        const weekInfo = getWeekDetails();
+        const labelEl = document.getElementById("kpi-current-week-label");
+        if (labelEl) {
+          labelEl.textContent = weekSelect.options[weekSelect.selectedIndex]?.text || weekInfo.label;
+        }
+
+        const matrixData = await getWeeklyAttendanceMatrix(selectedWeekId);
+        const students = matrixData?.students || [];
+        const stats = matrixData?.stats || {
+          totalStudents: 0,
+          activeStudents: 0,
+          totalPresentSlots: 0,
+          totalAbsentSlots: 0,
+          overallRate: 0,
+          dayPresentTotals: { saturday: 0, sunday: 0, monday: 0, tuesday: 0, wednesday: 0, thursday: 0, friday: 0 }
+        };
+
+        document.getElementById("kpi-total-students").textContent = stats.totalStudents;
+        document.getElementById("kpi-active-students").textContent = `${stats.activeStudents} نشط في النظام`;
+
+        document.getElementById("kpi-week-present").textContent = stats.totalPresentSlots;
+        document.getElementById("kpi-week-absent").textContent = stats.totalAbsentSlots;
+        
+        const absentRate = (stats.totalPresentSlots + stats.totalAbsentSlots) > 0 
+          ? Math.round((stats.totalAbsentSlots / (stats.totalPresentSlots + stats.totalAbsentSlots)) * 100) 
+          : 0;
+        document.getElementById("kpi-absent-rate").textContent = `نسبة الغياب: ${absentRate}%`;
+        document.getElementById("kpi-attendance-rate").textContent = `${stats.overallRate}%`;
+
+        // Update 7-day mini stats
+        const dTotals = stats.dayPresentTotals || {};
+        document.getElementById("day-stat-saturday").textContent = dTotals.saturday || 0;
+        document.getElementById("day-stat-sunday").textContent = dTotals.sunday || 0;
+        document.getElementById("day-stat-monday").textContent = dTotals.monday || 0;
+        document.getElementById("day-stat-tuesday").textContent = dTotals.tuesday || 0;
+        document.getElementById("day-stat-wednesday").textContent = dTotals.wednesday || 0;
+        document.getElementById("day-stat-thursday").textContent = dTotals.thursday || 0;
+        document.getElementById("day-stat-friday").textContent = dTotals.friday || 0;
+
+        renderRecentTable(students);
+        renderCharts(students, stats);
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+        const tbody = document.getElementById("recent-attendance-tbody");
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #ef4444;">تعذر تحميل السجلات المباشرة. جارٍ إعادة المحاولة...</td></tr>`;
+        }
+      }
+    }
+
+    function renderRecentTable(students) {
+      const tbody = document.getElementById("recent-attendance-tbody");
+      if (!tbody) return;
+      const activeScans = [];
+
+      const dayNames = {
+        saturday: "السبت",
+        sunday: "الأحد",
+        monday: "الإثنين",
+        tuesday: "الثلاثاء",
+        wednesday: "الأربعاء",
+        thursday: "الخميس",
+        friday: "الجمعة"
+      };
+
+      students.forEach(s => {
+        if (!s || !s.days) return;
+        Object.keys(dayNames).forEach(dKey => {
+          if (s.days[dKey]?.status === "present") {
+            activeScans.push({
+              name: s.name,
+              code: s.studentCode || s.studentId,
+              studentId: s.studentId,
+              grade: s.grade || "عام",
+              day: dayNames[dKey],
+              status: "present"
+            });
+          }
+        });
+      });
+
+      if (activeScans.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+              لا توجد تسجيلات حضور لهذا الأسبوع بعد.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = activeScans.slice(0, 10).map(item => `
+        <tr>
+          <td style="font-weight: 700;">
+            <a href="student.html?id=${item.studentId}" style="color: var(--primary-600);">${item.name}</a>
+          </td>
+          <td><strong style="color: var(--primary-700); font-family: monospace;">${item.code}</strong></td>
+          <td><span class="badge badge-none">${item.grade}</span></td>
+          <td><strong>${item.day}</strong></td>
+          <td>
+            <span class="badge badge-present">✅ حاضر</span>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function ensureChartJsReady(retries = 10) {
+      for (let i = 0; i < retries; i++) {
+        if (typeof window.Chart !== "undefined") return true;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      return typeof window.Chart !== "undefined";
+    }
+
+    async function renderCharts(students, currentStats) {
+      const isChartReady = await ensureChartJsReady();
+
+      const lineCtx = document.getElementById("weeklyAttendanceChart");
+      const doughnutCtx = document.getElementById("gradeDistributionChart");
+      const dTotals = currentStats?.dayPresentTotals || {};
+
+      if (isChartReady && lineCtx) {
+        try {
+          if (weeklyChartInstance) weeklyChartInstance.destroy();
+
+          weeklyChartInstance = new Chart(lineCtx, {
+            type: 'bar',
+            data: {
+              labels: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+              datasets: [{
+                label: 'عدد الحضور',
+                data: [
+                  dTotals.saturday || 0,
+                  dTotals.sunday || 0,
+                  dTotals.monday || 0,
+                  dTotals.tuesday || 0,
+                  dTotals.wednesday || 0,
+                  dTotals.thursday || 0,
+                  dTotals.friday || 0
+                ],
+                backgroundColor: ['#4f46e5', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f59e0b', '#10b981'],
+                borderRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+              }
+            }
+          });
+        } catch (e) {
+          console.warn("Chart render error:", e);
+        }
+      }
+
+      if (isChartReady && doughnutCtx) {
+        try {
+          if (gradeChartInstance) gradeChartInstance.destroy();
+          const gradeCounts = {};
+          students.forEach(s => {
+            if (s && s.grade) {
+              gradeCounts[s.grade] = (gradeCounts[s.grade] || 0) + 1;
+            }
+          });
+
+          const labels = Object.keys(gradeCounts);
+          const data = Object.values(gradeCounts);
+
+          gradeChartInstance = new Chart(doughnutCtx, {
+            type: 'doughnut',
+            data: {
+              labels: labels.length ? labels : ['ثانوي', 'إعدادي', 'جامعيين'],
+              datasets: [{
+                data: data.length ? data : [12, 8, 5],
+                backgroundColor: ['#4f46e5', '#f59e0b', '#10b981', '#0ea5e9', '#ec4899', '#8b5cf6']
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Cairo' } } }
+              }
+            }
+          });
+        } catch (e) {
+          console.warn("Doughnut render error:", e);
+        }
+      }
+    }
+
+    window.addEventListener('church_attendance_updated', () => loadDashboardData());
+    window.addEventListener('church_students_updated', () => loadDashboardData());
+
+    loadDashboardData();
+  </script>
+</body>
+</html>

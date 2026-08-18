@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إعدادات النظام والمواعيد - Attendance QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo"><i class="fa-solid fa-church"></i></div>
+        <div class="brand-info">
+          <span class="brand-title">Attendance QR</span>
+          <span class="brand-subtitle">كنيسة مارمينا العجايبي</span>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <div class="menu-category">القائمة الرئيسية</div>
+        <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-chart-pie"></i><span>لوحة التحكم</span></a>
+        <a href="students.html" class="nav-link"><i class="fa-solid fa-users"></i><span>إدارة الطلاب</span></a>
+        <div class="menu-category">تسجيل الحضور بالـ QR</div>
+        <a href="attendance.html" class="nav-link"><i class="fa-solid fa-qrcode"></i><span>تسجيل الحضور اليومي</span></a>
+        <div class="menu-category">التقارير والإعدادات</div>
+        <a href="reports.html" class="nav-link"><i class="fa-solid fa-file-word"></i><span>التقارير وتصدير Word</span></a>
+        <a href="settings.html" class="nav-link active"><i class="fa-solid fa-sliders"></i><span>المواعيد والإعدادات</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">A</div>
+          <div class="user-details"><span class="user-name">مسؤول النظام</span><span class="user-role">إعداد خدام</span></div>
+        </div>
+        <button class="btn-icon" data-action="logout" title="تسجيل الخروج" style="color: var(--danger-600);"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle btn-icon" id="mobile-menu-toggle"><i class="fa-solid fa-bars"></i></button>
+          <h2>إعدادات النظام وسجل الأنشطة</h2>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;" class="settings-grid">
+          
+          <!-- Schedule Settings Form -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <h2 class="card-title">
+                <i class="fa-solid fa-clock text-primary"></i>
+                <span>مواعيد أجزاء الحضور الرسمية</span>
+              </h2>
+            </div>
+            <div class="card-body">
+              <form id="settings-form">
+                <h4 style="color: var(--primary-700); margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.35rem;">
+                  <i class="fa-solid fa-calendar-day"></i> مواعيد يوم الخميس
+                </h4>
+
+                <div class="form-group">
+                  <label class="form-label">التسبيحة:</label>
+                  <div class="flex gap-2">
+                    <input type="time" id="time-thursday-tasbeha-start" class="form-control" value="18:00" required>
+                    <span style="align-self: center;">إلى</span>
+                    <input type="time" id="time-thursday-tasbeha-end" class="form-control" value="19:00" required>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">المحاضرة:</label>
+                  <div class="flex gap-2">
+                    <input type="time" id="time-thursday-lecture1-start" class="form-control" value="19:00" required>
+                    <span style="align-self: center;">إلى</span>
+                    <input type="time" id="time-thursday-lecture1-end" class="form-control" value="20:30" required>
+                  </div>
+                </div>
+
+                <h4 style="color: var(--primary-700); margin: 1.25rem 0 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.35rem;">
+                  <i class="fa-solid fa-cross"></i> مواعيد يوم الجمعة
+                </h4>
+
+                <div class="form-group">
+                  <label class="form-label">القداس الإلهي:</label>
+                  <div class="flex gap-2">
+                    <input type="time" id="time-friday-mass-start" class="form-control" value="08:00" required>
+                    <span style="align-self: center;">إلى</span>
+                    <input type="time" id="time-friday-mass-end" class="form-control" value="11:00" required>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">المحاضرة:</label>
+                  <div class="flex gap-2">
+                    <input type="time" id="time-friday-lecture2-start" class="form-control" value="11:00" required>
+                    <span style="align-self: center;">إلى</span>
+                    <input type="time" id="time-friday-lecture2-end" class="form-control" value="12:30" required>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">النوتة الروحية:</label>
+                  <div class="flex gap-2">
+                    <input type="time" id="time-friday-spiritualNotebook-start" class="form-control" value="12:30" required>
+                    <span style="align-self: center;">إلى</span>
+                    <input type="time" id="time-friday-spiritualNotebook-end" class="form-control" value="13:30" required>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full" style="margin-top: 1rem;">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  <span>حفظ إعدادات المواعيد</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Absence Engine & System Actions Card -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <h2 class="card-title">
+                <i class="fa-solid fa-gears text-gold"></i>
+                <span>محرك حساب الغياب التلقائي</span>
+              </h2>
+            </div>
+            <div class="card-body">
+              <div style="background: var(--primary-50); border: 1px solid var(--primary-200); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+                <h4 style="color: var(--primary-800); margin-bottom: 0.5rem;">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> كيف يعمل حساب الغياب؟
+                </h4>
+                <p class="text-sm" style="color: var(--primary-900); line-height: 1.6;">
+                  يقوم النظام بفحص كافة الطلاب النشطين ومقارنة حضورهم مع المواعيد المحددة. أي طالب لم يسجل حضوره بعد انتهاء موعد الجزء يتم اعتباره <strong>غائباً</strong> وتسجيل ذلك في الإحصائيات.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">تشغيل المعالجة اليدوية للغياب:</label>
+                <button type="button" class="btn btn-gold w-full btn-lg" id="run-absence-engine-btn">
+                  <i class="fa-solid fa-calculator"></i>
+                  <span>حساب وتثبيت الغياب للأسبوع الحالي الآن</span>
+                </button>
+              </div>
+
+              <div style="margin-top: 2rem; border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">
+                  <i class="fa-solid fa-shield-halved text-success"></i> حالة الاتصال والمزامنة
+                </h4>
+                <p class="text-sm text-muted" style="margin-bottom: 1rem;">
+                  قاعدة البيانات تدعم العمل بدون إنترنت (Offline First) مع مزامنة فورية بمجرد استعادة الاتصال.
+                </p>
+                <div class="badge badge-present" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                  <i class="fa-solid fa-database"></i> Firestore Offline Cache: مفعل ونشط
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- System Activity Audit Logs Table -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fa-solid fa-list-ul text-primary"></i>
+              <span>سجل العمليات والأنشطة الإدارية (Activity Log)</span>
+            </h2>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>العملية / الحدث</th>
+                  <th>التفاصيل</th>
+                  <th>المسؤول</th>
+                  <th>التوقيت</th>
+                </tr>
+              </thead>
+              <tbody id="activity-logs-tbody">
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 2rem;">
+                    <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="mobile-bottom-nav">
+      <a href="dashboard.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
+      <a href="attendance.html?day=thursday" class="mobile-nav-item"><i class="fa-solid fa-qrcode"></i><span>الخميس</span></a>
+      <a href="attendance.html?day=friday" class="mobile-nav-item"><i class="fa-solid fa-cross"></i><span>الجمعة</span></a>
+      <a href="students.html" class="mobile-nav-item"><i class="fa-solid fa-users"></i><span>الطلاب</span></a>
+      <a href="reports.html" class="mobile-nav-item"><i class="fa-solid fa-file-word"></i><span>التقارير</span></a>
+    </nav>
+  </div>
+
+  <script type="module">
+    import "./js/app.js";
+    import { getAttendanceSettings, saveAttendanceSettings, calculateAutomaticAbsence } from "./js/settings.js";
+    import { fetchRecentActivities } from "./js/activity.js";
+    import { formatDateTimeArabic, showToast } from "./js/utils.js";
+
+    async function loadSettings() {
+      const settings = await getAttendanceSettings();
+      if (settings.thursday) {
+        if (settings.thursday.tasbeha) {
+          document.getElementById("time-thursday-tasbeha-start").value = settings.thursday.tasbeha.start || "18:00";
+          document.getElementById("time-thursday-tasbeha-end").value = settings.thursday.tasbeha.end || "19:00";
+        }
+        if (settings.thursday.lecture1) {
+          document.getElementById("time-thursday-lecture1-start").value = settings.thursday.lecture1.start || "19:00";
+          document.getElementById("time-thursday-lecture1-end").value = settings.thursday.lecture1.end || "20:30";
+        }
+      }
+
+      if (settings.friday) {
+        if (settings.friday.mass) {
+          document.getElementById("time-friday-mass-start").value = settings.friday.mass.start || "08:00";
+          document.getElementById("time-friday-mass-end").value = settings.friday.mass.end || "11:00";
+        }
+        if (settings.friday.lecture2) {
+          document.getElementById("time-friday-lecture2-start").value = settings.friday.lecture2.start || "11:00";
+          document.getElementById("time-friday-lecture2-end").value = settings.friday.lecture2.end || "12:30";
+        }
+        if (settings.friday.spiritualNotebook) {
+          document.getElementById("time-friday-spiritualNotebook-start").value = settings.friday.spiritualNotebook.start || "12:30";
+          document.getElementById("time-friday-spiritualNotebook-end").value = settings.friday.spiritualNotebook.end || "13:30";
+        }
+      }
+
+      await loadActivityLogs();
+    }
+
+    async function loadActivityLogs() {
+      const logs = await fetchRecentActivities(30);
+      const tbody = document.getElementById("activity-logs-tbody");
+
+      if (logs.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+              لا توجد أنشطة مسجلة في السجل حتى الآن.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = logs.map(log => {
+        let detailsText = "";
+        if (log.details) {
+          if (typeof log.details === "string") {
+            detailsText = log.details;
+          } else {
+            detailsText = Object.entries(log.details)
+              .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+              .join(' | ');
+          }
+        }
+
+        return `
+          <tr>
+            <td style="font-weight: 700; color: var(--primary-600);">
+              <i class="fa-solid fa-circle-dot" style="font-size: 0.65rem; margin-left: 6px;"></i> ${log.action}
+            </td>
+            <td class="text-sm">${detailsText || '—'}</td>
+            <td><span class="badge badge-none">${log.adminEmail || 'مسؤول'}</span></td>
+            <td class="text-sm text-muted">${formatDateTimeArabic(log.timestamp)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // Save Settings
+    document.getElementById("settings-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newSettings = {
+        thursday: {
+          tasbeha: {
+            start: document.getElementById("time-thursday-tasbeha-start").value,
+            end: document.getElementById("time-thursday-tasbeha-end").value
+          },
+          lecture1: {
+            start: document.getElementById("time-thursday-lecture1-start").value,
+            end: document.getElementById("time-thursday-lecture1-end").value
+          }
+        },
+        friday: {
+          mass: {
+            start: document.getElementById("time-friday-mass-start").value,
+            end: document.getElementById("time-friday-mass-end").value
+          },
+          lecture2: {
+            start: document.getElementById("time-friday-lecture2-start").value,
+            end: document.getElementById("time-friday-lecture2-end").value
+          },
+          spiritualNotebook: {
+            start: document.getElementById("time-friday-spiritualNotebook-start").value,
+            end: document.getElementById("time-friday-spiritualNotebook-end").value
+          }
+        }
+      };
+
+      await saveAttendanceSettings(newSettings);
+      await loadActivityLogs();
+    });
+
+    // Run Absence Engine
+    document.getElementById("run-absence-engine-btn").addEventListener("click", async () => {
+      if (confirm("هل تريد تشغيل محرك حساب الغياب لجميع الطلاب الآن؟")) {
+        await calculateAutomaticAbsence();
+        await loadActivityLogs();
+      }
+    });
+
+    loadSettings();
+  </script>
+</body>
+</html>

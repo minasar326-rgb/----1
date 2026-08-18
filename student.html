@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الملف الشخصي وسجل الطالب - Attendance QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo"><i class="fa-solid fa-church"></i></div>
+        <div class="brand-info">
+          <span class="brand-title">Attendance QR</span>
+          <span class="brand-subtitle">كنيسة مارمينا العجايبي</span>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <div class="menu-category">القائمة الرئيسية</div>
+        <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-chart-pie"></i><span>لوحة التحكم</span></a>
+        <a href="students.html" class="nav-link active"><i class="fa-solid fa-users"></i><span>إدارة الطلاب</span></a>
+        <div class="menu-category">تسجيل الحضور بالـ QR</div>
+        <a href="attendance.html?day=thursday" class="nav-link"><i class="fa-solid fa-calendar-day"></i><span>حضور الخميس</span></a>
+        <a href="attendance.html?day=friday" class="nav-link"><i class="fa-solid fa-cross"></i><span>حضور الجمعة</span></a>
+        <div class="menu-category">التقارير والإعدادات</div>
+        <a href="reports.html" class="nav-link"><i class="fa-solid fa-file-word"></i><span>التقارير وتصدير Word</span></a>
+        <a href="settings.html" class="nav-link"><i class="fa-solid fa-sliders"></i><span>المواعيد والإعدادات</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">A</div>
+          <div class="user-details"><span class="user-name">مسؤول النظام</span><span class="user-role">إعداد خدام</span></div>
+        </div>
+        <button class="btn-icon" data-action="logout" title="تسجيل الخروج" style="color: var(--danger-600);"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle btn-icon" id="mobile-menu-toggle"><i class="fa-solid fa-bars"></i></button>
+          <a href="students.html" class="btn btn-outline btn-sm">
+            <i class="fa-solid fa-arrow-right"></i>
+            <span>العودة لقائمة الطلاب</span>
+          </a>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-gold" id="export-word-btn">
+            <i class="fa-solid fa-file-word"></i>
+            <span>تصدير تقرير Word للطالب</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <!-- Student Info Header Card -->
+        <div class="card" style="margin-bottom: 2rem;">
+          <div class="card-body">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
+              <div style="display: flex; align-items: center; gap: 1.5rem;">
+                <div class="student-avatar-lg" id="profile-avatar" style="width: 76px; height: 76px; font-size: 2rem;">
+                  م
+                </div>
+                <div>
+                  <h1 id="profile-name" style="font-size: 1.75rem; margin-bottom: 0.35rem;">جاري التحميل...</h1>
+                  <div class="flex gap-2 items-center flex-wrap">
+                    <span class="badge badge-primary" id="profile-grade">—</span>
+                    <span class="badge badge-gold" id="profile-qrid">QR: —</span>
+                    <span class="badge badge-none" id="profile-id">ID: —</span>
+                    <span class="badge badge-active" id="profile-status">نشط</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <button class="btn btn-outline" id="profile-toggle-status-btn">
+                  <i class="fa-solid fa-user-slash"></i>
+                  <span id="toggle-status-label">تعطيل الطالب</span>
+                </button>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light);">
+              <div>
+                <span class="text-xs text-muted">رقم الهاتف:</span>
+                <div style="font-weight: 700;" id="profile-phone">—</div>
+              </div>
+              <div>
+                <span class="text-xs text-muted">تاريخ التسجيل:</span>
+                <div style="font-weight: 700;" id="profile-created">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Statistics Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+              <i class="fa-solid fa-calendar-check"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي الحضور</span>
+              <span class="stat-value text-success" id="stat-present">0</span>
+              <span class="stat-subtext">أجزاء حضرها</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+              <i class="fa-solid fa-calendar-xmark"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي الغياب</span>
+              <span class="stat-value text-danger" id="stat-absent">0</span>
+              <span class="stat-subtext">أجزاء غاب عنها</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-gold">
+              <i class="fa-solid fa-percent"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">نسبة الحضور</span>
+              <span class="stat-value text-gold" id="stat-rate">0%</span>
+              <span class="stat-subtext">معدل الالتزام</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+              <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">عدد الأسابيع</span>
+              <span class="stat-value text-primary" id="stat-weeks">0</span>
+              <span class="stat-subtext">أسابيع مسجلة</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Attendance History Matrix -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fa-solid fa-timeline text-primary"></i>
+              <span>السجل الأسبوعي التفصيلي للحضور والغياب</span>
+            </h2>
+            <span class="text-sm text-muted">اضغط على أي جزء لتعديل حالته يدويًا</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>الأسبوع</th>
+                  <th style="text-align: center;">السبت</th>
+                  <th style="text-align: center;">الأحد</th>
+                  <th style="text-align: center;">الإثنين</th>
+                  <th style="text-align: center;">الثلاثاء</th>
+                  <th style="text-align: center;">الأربعاء</th>
+                  <th style="text-align: center;">الخميس</th>
+                  <th style="text-align: center;">الجمعة</th>
+                </tr>
+              </thead>
+              <tbody id="student-weeks-tbody">
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: 2rem;">
+                    <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="mobile-bottom-nav">
+      <a href="dashboard.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
+      <a href="attendance.html?day=thursday" class="mobile-nav-item"><i class="fa-solid fa-qrcode"></i><span>الخميس</span></a>
+      <a href="attendance.html?day=friday" class="mobile-nav-item"><i class="fa-solid fa-cross"></i><span>الجمعة</span></a>
+      <a href="students.html" class="mobile-nav-item active"><i class="fa-solid fa-users"></i><span>الطلاب</span></a>
+      <a href="reports.html" class="mobile-nav-item"><i class="fa-solid fa-file-word"></i><span>التقارير</span></a>
+    </nav>
+  </div>
+
+  <!-- Manual Edit Attendance Modal -->
+  <div class="modal-backdrop" id="manual-edit-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-pen-to-square text-primary"></i>
+          <span>تعديل حالة الحضور يدويًا</span>
+        </h3>
+        <button class="btn-icon" data-modal-close>&times;</button>
+      </div>
+      <form id="manual-edit-form">
+        <div class="modal-body">
+          <input type="hidden" id="edit-week-id">
+          <input type="hidden" id="edit-day">
+          <input type="hidden" id="edit-part">
+
+          <div style="background: var(--bg-surface-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+            <div>الجزء: <strong id="edit-part-title">—</strong></div>
+            <div>الأسبوع: <strong id="edit-week-title">—</strong></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">الحالة الجديدة:</label>
+            <div class="flex gap-4">
+              <label class="custom-checkbox">
+                <input type="radio" name="new-status" value="present" checked>
+                <span class="badge badge-present">✅ حاضر</span>
+              </label>
+              <label class="custom-checkbox">
+                <input type="radio" name="new-status" value="absent">
+                <span class="badge badge-absent">❌ غائب</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label" for="edit-reason-input">سبب التعديل اليدوي <span class="text-danger">*</span></label>
+            <input type="text" id="edit-reason-input" class="form-control" placeholder="مثال: نسى الكارنيه وحضر بالفعل / عذر مقبول" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal-close>إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ التعديل</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import "./js/app.js";
+    import { getStudentById, toggleStudentStatus } from "./js/students.js";
+    import { calculateStudentStats, exportStudentWordReport } from "./js/reports.js";
+    import { editAttendanceRecord, getPartName } from "./js/attendance.js";
+    import { formatDateArabic, openModal, closeModal, showToast, ALL_DAYS } from "./js/utils.js";
+
+    const studentId = new URLSearchParams(window.location.search).get("id");
+    let currentStats = null;
+
+    if (!studentId) {
+      window.location.replace("students.html");
+    }
+
+    async function loadStudentProfile() {
+      currentStats = await calculateStudentStats(studentId);
+      if (!currentStats || !currentStats.student) {
+        showToast("لم يتم العثور على الطالب", "error");
+        setTimeout(() => window.location.replace("students.html"), 1000);
+        return;
+      }
+
+      const s = currentStats.student;
+      document.getElementById("profile-name").textContent = s.name;
+      document.getElementById("profile-avatar").textContent = s.name.charAt(0);
+      document.getElementById("profile-grade").textContent = s.grade;
+      document.getElementById("profile-qrid").textContent = `الكارنيه: ${s.qrId}`;
+      document.getElementById("profile-id").textContent = `كود الطالب: ${s.studentCode || s.studentId}`;
+      document.getElementById("profile-phone").textContent = s.phone || "—";
+      document.getElementById("profile-created").textContent = formatDateArabic(s.createdAt);
+
+      const statusBadge = document.getElementById("profile-status");
+      statusBadge.className = `badge ${s.status === 'active' ? 'badge-active' : 'badge-inactive'}`;
+      statusBadge.textContent = s.status === 'active' ? 'نشط' : 'معطل';
+
+      const toggleBtnLabel = document.getElementById("toggle-status-label");
+      toggleBtnLabel.textContent = s.status === 'active' ? 'تعطيل الطالب' : 'إعادة تفعيل الطالب';
+
+      document.getElementById("stat-present").textContent = currentStats.presentCount;
+      document.getElementById("stat-absent").textContent = currentStats.absentCount;
+      document.getElementById("stat-rate").textContent = `${currentStats.rate}%`;
+      document.getElementById("stat-weeks").textContent = currentStats.weeksCount;
+
+      renderWeeklyMatrix(currentStats.weeksMap);
+    }
+
+    function renderWeeklyMatrix(weeksMap) {
+      const tbody = document.getElementById("student-weeks-tbody");
+      const weeks = Object.keys(weeksMap).sort().reverse();
+
+      if (weeks.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+              لا توجد سجلات حضور مسجلة لهذا الطالب بعد.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const daysList = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+      tbody.innerHTML = weeks.map(wId => {
+        const wData = weeksMap[wId];
+
+        const renderDayCell = (day) => {
+          const dayRecords = wData[day] || {};
+          const statuses = Object.values(dayRecords);
+          const isPresent = statuses.some(s => s === "present");
+          const isAbsent = statuses.length > 0 && statuses.every(s => s === "absent");
+
+          if (isPresent) {
+            return `<span class="badge badge-present" style="font-size:0.85rem;">✅ حاضر</span>`;
+          }
+          if (isAbsent) {
+            return `<span class="badge badge-absent" style="font-size:0.85rem;">❌ غائب</span>`;
+          }
+          return `<span class="badge badge-none" style="font-size:0.85rem;">—</span>`;
+        };
+
+        return `
+          <tr>
+            <td><strong>${wId}</strong></td>
+            <td style="text-align: center;">${renderDayCell('saturday')}</td>
+            <td style="text-align: center;">${renderDayCell('sunday')}</td>
+            <td style="text-align: center;">${renderDayCell('monday')}</td>
+            <td style="text-align: center;">${renderDayCell('tuesday')}</td>
+            <td style="text-align: center;">${renderDayCell('wednesday')}</td>
+            <td style="text-align: center;">${renderDayCell('thursday')}</td>
+            <td style="text-align: center;">${renderDayCell('friday')}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function openManualEditModal(weekId, day, partId) {
+      document.getElementById("edit-week-id").value = weekId;
+      document.getElementById("edit-day").value = day;
+      document.getElementById("edit-part").value = partId;
+      document.getElementById("edit-week-title").textContent = weekId;
+      const dayObj = ALL_DAYS.find(d => d.id === day) || { name: day };
+      document.getElementById("edit-part-title").textContent = `${dayObj.name}: ${getPartName(day, partId)}`;
+      document.getElementById("edit-reason-input").value = "";
+      openModal("manual-edit-modal");
+    }
+
+    // Manual Edit Form Handler
+    document.getElementById("manual-edit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const weekId = document.getElementById("edit-week-id").value;
+      const day = document.getElementById("edit-day").value;
+      const part = document.getElementById("edit-part").value;
+      const reason = document.getElementById("edit-reason-input").value.trim();
+      const newStatus = document.querySelector("input[name='new-status']:checked").value;
+
+      const success = await editAttendanceRecord({
+        weekId,
+        studentId: currentStats.student.studentId,
+        studentName: currentStats.student.name,
+        grade: currentStats.student.grade,
+        day,
+        part,
+        newStatus,
+        reason
+      });
+
+      if (success) {
+        closeModal("manual-edit-modal");
+        await loadStudentProfile();
+      }
+    });
+
+    // Toggle Status
+    document.getElementById("profile-toggle-status-btn").addEventListener("click", async () => {
+      await toggleStudentStatus(studentId, currentStats.student.status);
+      await loadStudentProfile();
+    });
+
+    // Export Word Report
+    document.getElementById("export-word-btn").addEventListener("click", async () => {
+      await exportStudentWordReport(studentId);
+    });
+
+    loadStudentProfile();
+  </script>
+</body>
+</html>

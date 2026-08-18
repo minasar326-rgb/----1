@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل دخول المسؤول - Attendance QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #0f172a 100%);
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .login-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+      animation: popIn 0.35s ease-out;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-logo {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+      color: var(--accent-gold-400);
+      border-radius: var(--radius-lg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-primary);
+    }
+
+    .login-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .login-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .password-toggle {
+      position: absolute;
+      left: 0.875rem;
+      color: var(--text-subtle);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.25rem;
+    }
+
+    .demo-hint {
+      margin-top: 1.5rem;
+      padding: 0.875rem;
+      background: var(--primary-50);
+      border: 1px dashed var(--primary-300);
+      border-radius: var(--radius-md);
+      font-size: 0.825rem;
+      color: var(--primary-800);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">
+        <i class="fa-solid fa-cross"></i>
+      </div>
+      <h1 class="login-title">تسجيل الدخول</h1>
+      <p class="login-subtitle">نظام حضور وغياب الطلاب بالكارنيه الذكي</p>
+    </div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="login-email">
+          <i class="fa-solid fa-envelope text-primary"></i> البريد الإلكتروني
+        </label>
+        <div class="input-with-icon">
+          <input 
+            type="email" 
+            id="login-email" 
+            class="form-control" 
+            placeholder="admin@marinachurch.org" 
+            value="admin@marinachurch.org" 
+            required 
+            autocomplete="email"
+          >
+          <i class="fa-solid fa-at input-icon"></i>
+        </div>
+      </div>
+
+      <div class="form-group" style="position: relative;">
+        <label class="form-label" for="login-password">
+          <i class="fa-solid fa-lock text-primary"></i> كلمة المرور
+        </label>
+        <div class="input-with-icon" style="position: relative;">
+          <input 
+            type="password" 
+            id="login-password" 
+            class="form-control" 
+            placeholder="••••••••" 
+            value="M@rina2026" 
+            required 
+            autocomplete="current-password"
+          >
+          <i class="fa-solid fa-eye password-toggle" id="toggle-password" title="إظهار / إخفاء كلمة المرور"></i>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full btn-lg" id="submit-btn" style="margin-top: 1.5rem;">
+        <span class="btn-text">تسجيل الدخول</span>
+        <span class="btn-loader spinner" style="display: none;"></span>
+      </button>
+    </form>
+
+    <div class="demo-hint">
+      <strong><i class="fa-solid fa-circle-info"></i> بيانات الدخول الحالية:</strong>
+      البريد: admin@marinachurch.org<br>
+      كلمة المرور: M@rina2026
+    </div>
+  </div>
+
+  <script type="module">
+    import { loginAdmin } from "./js/auth.js";
+    import { showToast } from "./js/utils.js";
+
+    const form = document.getElementById("login-form");
+    const emailInput = document.getElementById("login-email");
+    const passwordInput = document.getElementById("login-password");
+    const submitBtn = document.getElementById("submit-btn");
+    const btnText = submitBtn.querySelector(".btn-text");
+    const btnLoader = submitBtn.querySelector(".btn-loader");
+    const togglePassword = document.getElementById("toggle-password");
+
+    // Toggle password visibility
+    togglePassword.addEventListener("click", () => {
+      const isPass = passwordInput.type === "password";
+      passwordInput.type = isPass ? "text" : "password";
+      togglePassword.className = isPass ? "fa-solid fa-eye-slash password-toggle" : "fa-solid fa-eye password-toggle";
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        showToast("يرجى إدخال البريد الإلكتروني وكلمة المرور", "warning");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      btnText.style.display = "none";
+      btnLoader.style.display = "inline-block";
+
+      try {
+        await loginAdmin(email, password);
+      } finally {
+        submitBtn.disabled = false;
+        btnText.style.display = "inline-block";
+        btnLoader.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الحضور بالـ QR - Attendance QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+  <!-- HTML5 QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    .day-selector-pills-7 {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      scrollbar-width: thin;
+    }
+    .day-pill-7 {
+      flex: 1;
+      min-width: 90px;
+      padding: 0.65rem 0.5rem;
+      border: 1px solid var(--border-light);
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .day-pill-7:hover {
+      border-color: var(--primary-400);
+      color: var(--primary-700);
+    }
+    .day-pill-7.active {
+      background: var(--primary-600);
+      color: white;
+      border-color: var(--primary-600);
+      box-shadow: 0 4px 10px rgba(67, 56, 202, 0.25);
+    }
+    .scanner-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 991px) {
+      .scanner-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    .camera-box {
+      width: 100%;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: #000;
+      position: relative;
+      min-height: 280px;
+      max-height: 380px;
+    }
+    .scanner-controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .scanned-student-panel {
+      display: none;
+      background: var(--bg-surface);
+      border: 2px solid var(--primary-500);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+    .scanned-student-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .parts-checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+    }
+    .part-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border: 1.5px solid var(--border-light);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface-subtle);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .part-checkbox-label:hover {
+      border-color: var(--primary-400);
+    }
+    .part-checkbox-label input[type="checkbox"]:checked + span {
+      color: var(--primary-700);
+      font-weight: 700;
+    }
+    .part-checkbox-label:has(input[type="checkbox"]:checked) {
+      border-color: var(--primary-600);
+      background: rgba(67, 56, 202, 0.05);
+    }
+    .waiting-scan-placeholder {
+      background: var(--bg-surface-subtle);
+      border: 1.5px dashed var(--primary-300);
+      border-radius: var(--radius-lg);
+      padding: 2rem 1.25rem;
+      text-align: center;
+      color: var(--primary-800);
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      min-height: 260px;
+    }
+    .manual-entry-box {
+      margin-top: 1.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo"><i class="fa-solid fa-church"></i></div>
+        <div class="brand-info">
+          <span class="brand-title">Attendance QR</span>
+          <span class="brand-subtitle">كنيسة مارمينا العجايبي</span>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <div class="menu-category">القائمة الرئيسية</div>
+        <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-chart-pie"></i><span>لوحة التحكم</span></a>
+        <a href="students.html" class="nav-link"><i class="fa-solid fa-users"></i><span>إدارة الطلاب</span></a>
+        <div class="menu-category">تسجيل الحضور بالـ QR</div>
+        <a href="attendance.html" class="nav-link active"><i class="fa-solid fa-qrcode"></i><span>تسجيل الحضور اليومي</span></a>
+        <div class="menu-category">التقارير والإعدادات</div>
+        <a href="reports.html" class="nav-link"><i class="fa-solid fa-file-word"></i><span>التقارير وتصدير Word</span></a>
+        <a href="settings.html" class="nav-link"><i class="fa-solid fa-sliders"></i><span>المواعيد والإعدادات</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">A</div>
+          <div class="user-details"><span class="user-name">مسؤول النظام</span><span class="user-role">إعداد خدام</span></div>
+        </div>
+        <button class="btn-icon" data-action="logout" title="تسجيل الخروج" style="color: var(--danger-600);"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle btn-icon" id="mobile-menu-toggle"><i class="fa-solid fa-bars"></i></button>
+          <h2>تسجيل الحضور بالـ QR لجميع أيام الأسبوع</h2>
+        </div>
+        <div class="topbar-right flex gap-2" style="align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label for="attendance-week-select" style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin: 0;">الأسبوع:</label>
+            <select id="attendance-week-select" class="form-control form-control-sm" style="font-weight: 700; width: 170px;">
+              <!-- Multi-year options populated dynamically -->
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <!-- 7-Day Selector Bar -->
+        <div class="card" style="margin-bottom: 1.5rem; padding: 0.75rem;">
+          <div class="day-selector-pills-7" id="days-pills-container">
+            <button type="button" class="day-pill-7" data-day="saturday">
+              <i class="fa-solid fa-church"></i>
+              <span>السبت <small style="font-size:0.75rem; opacity:0.85;">(العشية)</small></span>
+            </button>
+            <button type="button" class="day-pill-7" data-day="sunday">
+              <i class="fa-solid fa-cross"></i>
+              <span>الأحد <small style="font-size:0.75rem; opacity:0.85;">(القداس)</small></span>
+            </button>
+            <button type="button" class="day-pill-7" data-day="monday">
+              <i class="fa-solid fa-person-running"></i>
+              <span>الإثنين <small style="font-size:0.75rem; opacity:0.85;">(ماراثون)</small></span>
+            </button>
+            <button type="button" class="day-pill-7" data-day="tuesday">
+              <i class="fa-solid fa-person-running"></i>
+              <span>الثلاثاء <small style="font-size:0.75rem; opacity:0.85;">(ماراثون)</small></span>
+            </button>
+            <button type="button" class="day-pill-7" data-day="wednesday">
+              <i class="fa-solid fa-cross"></i>
+              <span>الأربعاء <small style="font-size:0.75rem; opacity:0.85;">(القداس)</small></span>
+            </button>
+            <button type="button" class="day-pill-7" data-day="thursday">
+              <i class="fa-solid fa-calendar-day"></i>
+              <span>الخميس <small style="font-size:0.75rem; opacity:0.85;">(تسبيحة/محاضرة)</small></span>
+            </button>
+            <button type="button" class="day-pill-7" data-day="friday">
+              <i class="fa-solid fa-cross"></i>
+              <span>الجمعة <small style="font-size:0.75rem; opacity:0.85;">(قداس/درس)</small></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scanner & Attendance Card Grid -->
+        <div class="scanner-container">
+
+          <!-- Left Column: Camera Scanner Viewport -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <h3 class="card-title" style="margin-bottom: 2px;">
+                  <i class="fa-solid fa-camera text-primary"></i>
+                  <span id="active-day-heading">حضور يوم السبت</span>
+                </h3>
+                <div id="live-day-date-display" style="font-size: 0.82rem; font-weight: 700; color: var(--accent-gold-700);">
+                  <!-- Populated dynamically with exact Arabic date -->
+                </div>
+              </div>
+              <div class="badge badge-present" id="scanner-status-badge">
+                <i class="fa-solid fa-circle-dot fa-fade"></i> الكاميرا نشطة
+              </div>
+            </div>
+            <div class="card-body" style="padding: 1.25rem;">
+              <div class="camera-box">
+                <div id="attendance-qr-reader" style="width: 100%; height: 100%;"></div>
+                <div class="scanner-overlay">
+                  <div class="scanner-target-box">
+                    <div class="scanner-laser"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="scanner-controls">
+                <button type="button" class="btn btn-outline flex-1" id="toggle-camera-btn">
+                  <i class="fa-solid fa-video"></i>
+                  <span id="camera-btn-text">إيقاف الكاميرا</span>
+                </button>
+                <button type="button" class="btn btn-outline flex-1" id="flip-camera-btn">
+                  <i class="fa-solid fa-camera-rotate"></i>
+                  <span>تبديل الكاميرا</span>
+                </button>
+              </div>
+
+              <!-- Fallback Manual QR / Code / Name Autocomplete Box -->
+              <div class="manual-entry-box">
+                <div class="form-label text-sm text-muted">
+                  <i class="fa-solid fa-keyboard"></i> في حالة تعذر الكاميرا: ابحث بالاسم أو الكود
+                </div>
+                <div class="flex gap-2" style="position: relative;">
+                  <div class="input-with-icon flex-1">
+                    <input 
+                      type="text" 
+                      id="manual-qr-input" 
+                      class="form-control" 
+                      placeholder="اكتب اسم الطالب أو كوده..."
+                      autocomplete="off"
+                    >
+                    <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                  </div>
+                  <button type="button" class="btn btn-primary" id="manual-search-btn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>تأكيد</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Right Column: Student Attendance Confirmation Panel -->
+          <div>
+            <!-- Initial Waiting Placeholder -->
+            <div class="waiting-scan-placeholder" id="waiting-placeholder">
+              <i class="fa-solid fa-qrcode" style="font-size: 3.5rem; color: var(--primary-400);"></i>
+              <div style="font-size: 1.15rem;">في انتظار قراءة كارنيه أو اختيار طالب...</div>
+              <div class="text-sm text-muted font-normal">
+                وجّه كاميرا الهاتف أو اللابتوب نحو كود الـ QR، أو اختر الطالب بالبحث الذكي
+              </div>
+            </div>
+
+            <!-- Scanned Student Interactive Card -->
+            <div class="scanned-student-panel" id="scanned-student-panel">
+              <div class="scanned-student-header">
+                <div class="student-avatar-lg" id="panel-avatar" style="width: 60px; height: 60px; font-size: 1.5rem;">م</div>
+                <div style="flex: 1;">
+                  <h3 id="panel-student-name" style="margin-bottom: 0.25rem; font-size: 1.3rem;">اسم الطالب</h3>
+                  <div class="flex gap-2 items-center flex-wrap">
+                    <span class="badge badge-primary" id="panel-student-grade">المرحلة</span>
+                    <span class="badge badge-gold" id="panel-student-code"><i class="fa-solid fa-id-card"></i> STU-1001</span>
+                    <span class="badge badge-none" id="panel-student-qrid">QR: —</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Day Parts Selection Checklist -->
+              <div style="font-weight: 700; margin-bottom: 0.75rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
+                <span><i class="fa-solid fa-list-check text-primary"></i> أجزاء الحضور لليوم:</span>
+                <button type="button" class="btn btn-gold btn-sm" id="select-all-parts-btn">
+                  <i class="fa-solid fa-check-double"></i>
+                  <span id="full-day-btn-label">حضر اليوم كامل</span>
+                </button>
+              </div>
+
+              <div class="parts-checklist" id="parts-checklist-container">
+                <!-- Dynamically Rendered Checkboxes -->
+              </div>
+
+              <div class="flex gap-2" style="margin-top: 1.5rem;">
+                <button type="button" class="btn btn-primary flex-1 btn-lg" id="confirm-attendance-btn">
+                  <i class="fa-solid fa-circle-check"></i>
+                  <span>تسجيل الحضور الآن</span>
+                </button>
+                <button type="button" class="btn btn-outline" id="cancel-scan-btn">
+                  <span>إلغاء</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Recent Scan Feed on this device -->
+            <div class="card" style="margin-top: 1.5rem;">
+              <div class="card-header" style="padding: 0.875rem 1.25rem;">
+                <h4 class="card-title text-sm">
+                  <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                  <span>سجل الحضور في هذه الجلسة</span>
+                </h4>
+                <span class="badge badge-success" id="session-count-badge">0 تم تسجيلهم</span>
+              </div>
+              <div class="card-body" style="padding: 0.75rem 1.25rem;">
+                <div id="session-scan-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto;">
+                  <div class="text-muted text-sm text-center" style="padding: 1rem;">لم يتم مسح أي كارنيه بعد</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="mobile-bottom-nav">
+      <a href="dashboard.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
+      <a href="attendance.html" class="mobile-nav-item active"><i class="fa-solid fa-qrcode"></i><span>تسجيل الحضور</span></a>
+      <a href="students.html" class="mobile-nav-item"><i class="fa-solid fa-users"></i><span>الطلاب</span></a>
+      <a href="reports.html" class="mobile-nav-item"><i class="fa-solid fa-file-word"></i><span>التقارير</span></a>
+    </nav>
+  </div>
+
+  <script type="module">
+    import "./js/app.js";
+    import { getStudentByQrId, getStudentById, getAllStudents } from "./js/students.js";
+    import { recordStudentAttendance, getAttendanceRecord, isSpiritualNotebookRecorded, getPartName } from "./js/attendance.js";
+    import { initScanner, stopScanner, toggleCameraFacing } from "./js/scanner.js";
+    import { ATTENDANCE_PARTS, ALL_DAYS, getCurrentWeekId, getWeekDetails, getPastWeeks, getActualDayDate, showToast, playErrorBeep, playSuccessBeep } from "./js/utils.js";
+    import { initStudentAutocomplete } from "./js/autocomplete.js";
+
+    let currentDay = "saturday";
+    let activeStudent = null;
+    let currentWeekId = getCurrentWeekId();
+    let sessionScans = [];
+    let isCameraRunning = true;
+
+    // Detect Day from URL or current actual day of week
+    const urlParams = new URLSearchParams(window.location.search);
+    const dayParam = urlParams.get("day");
+    if (dayParam && ALL_DAYS.some(d => d.id === dayParam)) {
+      currentDay = dayParam;
+    } else {
+      // Map current JS weekday (0=Sun, 1=Mon, ..., 6=Sat)
+      const dayMap = { 0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday" };
+      const todayDay = dayMap[new Date().getDay()];
+      if (todayDay) currentDay = todayDay;
+    }
+
+    // Populate Multi-Year Week Dropdown (covers up to 2030)
+    const weekSelect = document.getElementById("attendance-week-select");
+    const multiYearWeeks = getPastWeeks();
+    weekSelect.innerHTML = multiYearWeeks.map(w => `
+      <option value="${w.weekId}" ${w.weekId === currentWeekId ? 'selected' : ''}>
+        ${w.label}
+      </option>
+    `).join("");
+
+    weekSelect.addEventListener("change", () => {
+      currentWeekId = weekSelect.value;
+      updateDayUI();
+      if (activeStudent) renderPartsChecklist(activeStudent);
+    });
+
+    function updateDayUI() {
+      // Update Day Pills
+      document.querySelectorAll(".day-pill-7").forEach(btn => {
+        if (btn.dataset.day === currentDay) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+
+      const dayObj = ALL_DAYS.find(d => d.id === currentDay) || { name: currentDay };
+      const dayDate = getActualDayDate(currentWeekId, currentDay);
+      document.getElementById("active-day-heading").textContent = `حضور يوم ${dayObj.name}`;
+      const dateDisplay = document.getElementById("live-day-date-display");
+      if (dateDisplay) {
+        dateDisplay.innerHTML = `<i class="fa-regular fa-calendar-check text-gold"></i> ${dayDate.dateArabic} • (${currentWeekId})`;
+      }
+      document.getElementById("full-day-btn-label").textContent = `حضر ${dayObj.name} كامل`;
+
+      if (activeStudent) {
+        renderPartsChecklist(activeStudent);
+      }
+    }
+
+    // Day Pill Click Handlers
+    document.querySelectorAll(".day-pill-7").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentDay = btn.dataset.day;
+        updateDayUI();
+      });
+    });
+
+    updateDayUI();
+
+    // Render Dynamic Parts Checklist
+    async function renderPartsChecklist(student) {
+      const container = document.getElementById("parts-checklist-container");
+      const parts = ATTENDANCE_PARTS[currentDay] || [{ id: "general", name: "حضور اليوم", icon: "fa-check" }];
+
+      let html = "";
+      for (const part of parts) {
+        const record = await getAttendanceRecord(currentWeekId, student.studentId, currentDay, part.id);
+        const isRecorded = record && record.status === "present";
+        
+        let notebookNotice = "";
+        let disabledAttr = "";
+
+        if (part.id === "spiritualNotebook") {
+          const notebookDone = await isSpiritualNotebookRecorded(currentWeekId, student.studentId);
+          if (notebookDone && !isRecorded) {
+            notebookNotice = `<span class="badge badge-gold text-xs" style="margin-right:auto;">تم تسليمها سابقاً</span>`;
+            disabledAttr = "disabled";
+          }
+        }
+
+        html += `
+          <label class="part-checkbox-label" style="${disabledAttr ? 'opacity: 0.6; cursor: not-allowed;' : ''}">
+            <input 
+              type="checkbox" 
+              name="attendance-part" 
+              value="${part.id}" 
+              ${isRecorded ? 'checked disabled' : 'checked'}
+              ${disabledAttr}
+              style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-600);"
+            >
+            <i class="fa-solid ${part.icon || 'fa-check'} text-primary"></i>
+            <span>${part.name}</span>
+            ${isRecorded ? '<span class="badge badge-present text-xs" style="margin-right:auto;"><i class="fa-solid fa-check"></i> مسجل بالفعل</span>' : ''}
+            ${notebookNotice}
+          </label>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Select all parts button
+    document.getElementById("select-all-parts-btn").addEventListener("click", () => {
+      document.querySelectorAll('#parts-checklist-container input[type="checkbox"]:not(:disabled)').forEach(cb => {
+        cb.checked = true;
+      });
+    });
+
+    // Handle Scanned / Selected Student Code
+    async function handleScannedCode(code) {
+      if (!code) return;
+      let student = await getStudentByQrId(code);
+      if (!student) {
+        student = await getStudentById(code);
+      }
+      if (!student) {
+        // Try match by studentCode
+        const all = await getAllStudents();
+        student = all.find(s => (s.studentCode && s.studentCode.toLowerCase() === code.toLowerCase()) || (s.qrId && s.qrId.toLowerCase() === code.toLowerCase()));
+      }
+
+      if (!student) {
+        playErrorBeep();
+        showToast("لم يتم العثور على طالب مرتبط بهذا الكود", "error");
+        return;
+      }
+
+      if (student.status === "inactive") {
+        playErrorBeep();
+        showToast(`الطالب (${student.name}) معطل في النظام.`, "warning");
+        return;
+      }
+
+      activeStudent = student;
+      document.getElementById("panel-student-name").textContent = student.name;
+      document.getElementById("panel-avatar").textContent = student.name.charAt(0);
+      document.getElementById("panel-student-grade").textContent = student.grade;
+      document.getElementById("panel-student-code").innerHTML = `<i class="fa-solid fa-id-card"></i> ${student.studentCode || student.studentId}`;
+      document.getElementById("panel-student-qrid").textContent = `QR: ${student.qrId}`;
+
+      await renderPartsChecklist(student);
+
+      document.getElementById("waiting-placeholder").style.display = "none";
+      document.getElementById("scanned-student-panel").style.display = "block";
+    }
+
+    // Confirm Attendance Submit
+    document.getElementById("confirm-attendance-btn").addEventListener("click", async () => {
+      if (!activeStudent) return;
+
+      const checkedInputs = Array.from(document.querySelectorAll('#parts-checklist-container input[name="attendance-part"]:checked:not(:disabled)'));
+      const selectedParts = checkedInputs.map(i => i.value);
+
+      if (selectedParts.length === 0) {
+        showToast("يرجى اختيار جزء واحد على الأقل لتسجيله، أو أن الأجزاء مسجلة بالفعل", "warning");
+        return;
+      }
+
+      const result = await recordStudentAttendance({
+        student: activeStudent,
+        day: currentDay,
+        selectedParts,
+        weekId: currentWeekId
+      });
+
+      if (result.success) {
+        playSuccessBeep();
+        sessionScans.unshift({
+          name: activeStudent.name,
+          grade: activeStudent.grade,
+          code: activeStudent.studentCode,
+          day: currentDay,
+          parts: selectedParts.map(p => getPartName(currentDay, p)),
+          time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        });
+        renderSessionList();
+
+        document.getElementById("scanned-student-panel").style.display = "none";
+        document.getElementById("waiting-placeholder").style.display = "flex";
+        activeStudent = null;
+      }
+    });
+
+    // Cancel scan button
+    document.getElementById("cancel-scan-btn").addEventListener("click", () => {
+      document.getElementById("scanned-student-panel").style.display = "none";
+      document.getElementById("waiting-placeholder").style.display = "flex";
+      activeStudent = null;
+    });
+
+    function renderSessionList() {
+      document.getElementById("session-count-badge").textContent = `${sessionScans.length} تم تسجيلهم`;
+      const container = document.getElementById("session-scan-list");
+      if (sessionScans.length === 0) {
+        container.innerHTML = `<div class="text-muted text-sm text-center" style="padding: 1rem;">لم يتم مسح أي كارنيه بعد</div>`;
+        return;
+      }
+      container.innerHTML = sessionScans.slice(0, 15).map(s => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); font-size: 0.875rem;">
+          <div>
+            <strong>${s.name}</strong> <span class="text-muted text-xs">(${s.grade})</span>
+            <div class="text-xs text-primary" style="font-weight: 600;">${s.parts.join(" • ")}</div>
+          </div>
+          <span class="text-xs text-muted">${s.time}</span>
+        </div>
+      `).join("");
+    }
+
+    // Manual Search Handler & Autocomplete
+    const manualInput = document.getElementById("manual-qr-input");
+    const manualBtn = document.getElementById("manual-search-btn");
+
+    async function executeManualSearch() {
+      const code = manualInput.value.trim();
+      if (!code) {
+        showToast("يرجى إدخال رمز الكارنيه أو كود الطالب أو اسمه", "warning");
+        return;
+      }
+      let student = await getStudentByQrId(code);
+      if (!student) {
+        student = await getStudentById(code);
+      }
+      if (!student) {
+        const all = await getAllStudents();
+        student = all.find(s => 
+          (s.studentCode && s.studentCode.toLowerCase() === code.toLowerCase()) ||
+          s.name.toLowerCase().includes(code.toLowerCase())
+        );
+      }
+
+      if (student) {
+        playSuccessBeep();
+        handleScannedCode(student.studentCode || student.qrId || student.studentId);
+        manualInput.value = "";
+      } else {
+        playErrorBeep();
+        showToast("هذا الكارنيه أو الكود غير مسجل في النظام.", "error");
+      }
+    }
+
+    initStudentAutocomplete({
+      input: "#manual-qr-input",
+      placeholder: "اكتب اسم الطالب أو كوده...",
+      onSelect: (student) => {
+        playSuccessBeep();
+        handleScannedCode(student.studentCode || student.qrId || student.studentId);
+      }
+    });
+
+    manualBtn.addEventListener("click", executeManualSearch);
+    manualInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        executeManualSearch();
+      }
+    });
+
+    // Initialize Camera Scanner
+    async function startCamera() {
+      await initScanner("attendance-qr-reader", async (decodedText) => {
+        await handleScannedCode(decodedText.trim());
+      });
+    }
+
+    startCamera();
+
+    document.getElementById("toggle-camera-btn").addEventListener("click", async () => {
+      if (isCameraRunning) {
+        await stopScanner();
+        document.getElementById("camera-btn-text").textContent = "تشغيل الكاميرا";
+        document.getElementById("scanner-status-badge").className = "badge badge-inactive";
+        document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-pause"></i> متوقفة`;
+        isCameraRunning = false;
+      } else {
+        await startCamera();
+        document.getElementById("camera-btn-text").textContent = "إيقاف الكاميرا";
+        document.getElementById("scanner-status-badge").className = "badge badge-present";
+        document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-dot fa-fade"></i> الكاميرا نشطة`;
+        isCameraRunning = true;
+      }
+    });
+
+    document.getElementById("flip-camera-btn").addEventListener("click", async () => {
+      await toggleCameraFacing();
+    });
+  </script>
+</body>
+</html>

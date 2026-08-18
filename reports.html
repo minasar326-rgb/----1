@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#312e81">
+  <meta name="description" content="نظام إدارة حضور وغياب الطلاب الذكي - كنيسة مارمينا العجايبي بكوم المحرص - إعداد خدام">
+  <title>التقارير والمصفوفة الأسبوعية وتصدير Word - كنيسة مارمينا العجايبي</title>
+
+  <!-- Google Fonts & Font Awesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Core CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+  <style>
+    .print-header { display: none; }
+    @media print {
+      body { background: white; color: black; }
+      .sidebar, .top-header, .mobile-bottom-nav, .no-print, .btn, .filter-grid, .card-actions { display: none !important; }
+      .main-wrapper { margin-right: 0 !important; width: 100% !important; }
+      .page-content { padding: 0 !important; }
+      .card { border: none !important; box-shadow: none !important; }
+      .print-header { display: block; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+      .data-table { font-size: 8.5pt !important; width: 100% !important; border-collapse: collapse; }
+      .data-table th, .data-table td { border: 1px solid #333 !important; padding: 4px !important; text-align: center !important; }
+      .badge { border: none !important; font-weight: bold !important; }
+    }
+    .custom-student-export-card {
+      background: linear-gradient(135deg, #f8fafc 0%, #ede9fe 100%);
+      border: 1.5px solid var(--primary-200);
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body class="dashboard-body">
+
+  <div class="dashboard-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <i class="fa-solid fa-church text-gold"></i>
+          <div>
+            <div class="church-name">كنيسة مارمينا العجايبي</div>
+            <div class="church-sub">إعداد خدام • كوم المحرص</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">القائمة الرئيسية</div>
+        <a href="dashboard.html" class="nav-link">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>الرئيسية والإحصائيات</span>
+        </a>
+        <a href="attendance.html" class="nav-link">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>تسجيل الحضور الذكي</span>
+        </a>
+        <a href="students.html" class="nav-link">
+          <i class="fa-solid fa-users"></i>
+          <span>دليل وسجل الطلاب</span>
+        </a>
+        <a href="reports.html" class="nav-link active">
+          <i class="fa-solid fa-file-word"></i>
+          <span>التقارير وتصدير Word</span>
+        </a>
+
+        <div class="nav-section-title">النظام</div>
+        <a href="settings.html" class="nav-link">
+          <i class="fa-solid fa-sliders"></i>
+          <span>المواعيد والإعدادات</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" id="user-avatar">خ</div>
+          <div class="user-info">
+            <span class="user-name" id="user-name">الخادم المسؤول</span>
+            <span class="user-role" id="user-role">مسؤول النظام</span>
+          </div>
+        </div>
+        <button class="logout-btn" id="logout-btn" title="تسجيل الخروج">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <!-- Top Header -->
+      <header class="top-header no-print">
+        <div class="header-title">
+          <h1>التقارير الأسبوعية وتصدير Word</h1>
+          <p class="header-subtitle">مصفوفة حضور وغياب جميع الأيام (السبت - الجمعة) وتصدير مستندات Word المنسقة</p>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn btn-primary" id="export-week-word-btn" title="تصدير تقرير الأسبوع المختار إلى ملف Word">
+            <i class="fa-solid fa-file-word"></i>
+            <span>تصدير تقرير الأسبوع (Word)</span>
+          </button>
+          <button class="btn btn-gold" id="export-master-word-btn" title="تصدير التقرير الشامل التراكمي لجميع الطلاب">
+            <i class="fa-solid fa-file-export"></i>
+            <span>تصدير شامل (Word)</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <!-- Print Header -->
+        <div class="print-header">
+          <h1 style="color: #1e1b4b; font-size: 20pt; margin: 0 0 4px 0;">كنيسة مارمينا العجايبي بكوم المحرص</h1>
+          <h2 style="color: #b45309; font-size: 14pt; margin: 0 0 6px 0;">إعداد خدام</h2>
+          <h3 style="color: #4338ca; font-size: 12pt; margin: 0;" id="print-week-title">تقرير الحضور والغياب الأسبوعي لجميع الأيام</h3>
+        </div>
+
+        <!-- Church Info Banner with Multi-Year Week Selector (2024 -> 2030) -->
+        <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%); color: white;">
+          <div class="card-body" style="padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div style="font-size: 1.35rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-church text-gold"></i>
+                <span>كنيسة مارمينا العجايبي بكوم المحرص</span>
+              </div>
+              <div style="color: var(--accent-gold-400); font-weight: 700; font-size: 1.05rem; margin-top: 2px;">
+                إعداد خدام • سجل الحضور الشامل لجميع أيام الأسبوع (حتى سنة 2030)
+              </div>
+            </div>
+
+            <!-- Multi-Year Week Selector -->
+            <div style="display: flex; align-items: center; gap: 0.75rem; background: rgba(255, 255, 255, 0.1); padding: 0.5rem 0.85rem; border-radius: var(--radius-md);">
+              <label for="week-select" style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0; color: var(--accent-gold-300); white-space: nowrap;">
+                <i class="fa-solid fa-calendar-week"></i> اختر الأسبوع:
+              </label>
+              <select id="week-select" class="form-control" style="background: white; color: var(--primary-900); font-weight: 700; min-width: 250px;">
+                <!-- Populated dynamically across 2024-2030 -->
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dedicated Single Student Word Exporter Card -->
+        <div class="card custom-student-export-card no-print">
+          <div class="card-body" style="padding: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <div style="background: var(--primary-600); color: white; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <div>
+                  <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--primary-900);">تصدير تقرير مخصص لطالب مفرد (Word)</h3>
+                  <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">اختر الطالب والفترة الزمنية والأيام المطلوبة، ثم قم بالتصدير مباشرة</p>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.2fr auto; gap: 1rem; align-items: end;" class="student-export-grid">
+              <div class="input-with-icon" style="position: relative;">
+                <input type="text" id="single-student-search" class="form-control" placeholder="ابحث باسم الطالب أو الكود لتصدير تقريره..." autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                <input type="hidden" id="selected-student-id-export">
+              </div>
+
+              <div>
+                <label class="form-label" style="margin-bottom: 0.35rem; display: block;">نوع الفترة</label>
+                <select id="report-range-mode" class="form-control">
+                  <option value="all">كافة السجلات</option>
+                  <option value="week">أسبوع محدد</option>
+                  <option value="month">شهر محدد</option>
+                  <option value="custom">تاريخ مخصص</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="form-label" style="margin-bottom: 0.35rem; display: block;">الاختيار</label>
+                <select id="single-student-week-filter" class="form-control">
+                  <option value="">شامل كافة الأسابيع</option>
+                </select>
+              </div>
+
+              <button type="button" class="btn btn-primary" id="btn-export-single-student" style="white-space: nowrap;">
+                <i class="fa-solid fa-file-word"></i>
+                <span>تصدير تقرير الطالب (Word)</span>
+              </button>
+            </div>
+
+            <div id="custom-date-range-box" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light);">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                  <label class="form-label">من تاريخ</label>
+                  <input type="date" id="report-start-date" class="form-control" />
+                </div>
+                <div>
+                  <label class="form-label">إلى تاريخ</label>
+                  <input type="date" id="report-end-date" class="form-control" />
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+              <label class="form-label" style="margin-bottom: 0.5rem; display: block;">الأيام المراد تضمينها في التقرير</label>
+              <div id="report-day-picker" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="saturday" checked /> السبت</label>
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="sunday" checked /> الأحد</label>
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="monday" checked /> الإثنين</label>
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="tuesday" checked /> الثلاثاء</label>
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="wednesday" checked /> الأربعاء</label>
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="thursday" checked /> الخميس</label>
+                <label class="badge badge-none" style="cursor: pointer; padding: 0.4rem 0.7rem;"><input type="checkbox" value="friday" checked /> الجمعة</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly KPI Summary Cards -->
+        <div class="stats-grid" style="margin-bottom: 1.5rem;">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي الطلاب</span>
+              <span class="stat-value" id="kpi-week-total-students">0</span>
+              <span class="stat-subtext" id="kpi-week-active-students">0 نشط</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+              <i class="fa-solid fa-user-check"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي جلسات الحضور</span>
+              <span class="stat-value" id="kpi-week-present-slots">0</span>
+              <span class="stat-subtext">مسجلة هذا الأسبوع</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+              <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">إجمالي جلسات الغياب</span>
+              <span class="stat-value" id="kpi-week-absent-slots">0</span>
+              <span class="stat-subtext">غياب مسجل</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-gold">
+              <i class="fa-solid fa-percent"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">نسبة الحضور للأسبوع</span>
+              <span class="stat-value" id="kpi-week-rate">0%</span>
+              <span class="stat-subtext">معدل التزام الطلاب</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Controls Bar -->
+        <div class="card no-print" style="margin-bottom: 1.5rem;">
+          <div class="card-body" style="padding: 1.25rem;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: center;" class="filter-grid">
+              <div class="input-with-icon" style="position: relative;">
+                <input type="text" id="filter-search" class="form-control" placeholder="ابحث باسم الطالب أو الكود في الجدول..." autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass input-icon"></i>
+              </div>
+
+              <div>
+                <select id="filter-grade" class="form-control">
+                  <option value="">جميع المراحل</option>
+                </select>
+              </div>
+
+              <div>
+                <select id="filter-status" class="form-control">
+                  <option value="">جميع حالات الحضور</option>
+                  <option value="present_active">حضر يوماً واحداً على الأقل</option>
+                  <option value="absent_all">غائب الأسبوع كاملاً (0%)</option>
+                </select>
+              </div>
+
+              <button type="button" class="btn btn-outline btn-icon" id="filter-reset-btn" title="إعادة تعيين الفلاتر">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master 7-Day Weekly Matrix Table Card -->
+        <div class="card">
+          <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+            <h2 class="card-title">
+              <i class="fa-solid fa-table-list text-primary"></i>
+              <span>سجل حضور وغياب الأسبوع لجميع الأيام (<span id="matrix-students-count">0</span> طالب)</span>
+            </h2>
+            <div class="flex gap-2">
+              <button class="btn btn-outline btn-sm no-print" onclick="window.print()">
+                <i class="fa-solid fa-print"></i>
+                <span>طباعة</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" style="font-size: 0.88rem;">
+              <thead>
+                <tr>
+                  <th style="width: 3%;">م</th>
+                  <th style="width: 10%;">كود الطالب</th>
+                  <th style="width: 17%;">اسم الطالب</th>
+                  <th style="width: 12%;">المرحلة</th>
+                  <th style="width: 7%; text-align: center;">السبت<br><small style="font-size:0.75rem; color:#fef08a;">(العشية)</small></th>
+                  <th style="width: 7%; text-align: center;">الأحد<br><small style="font-size:0.75rem; color:#fef08a;">(القداس)</small></th>
+                  <th style="width: 7%; text-align: center;">الإثنين<br><small style="font-size:0.75rem; color:#fef08a;">(الماراثون)</small></th>
+                  <th style="width: 7%; text-align: center;">الثلاثاء<br><small style="font-size:0.75rem; color:#fef08a;">(الماراثون)</small></th>
+                  <th style="width: 7%; text-align: center;">الأربعاء<br><small style="font-size:0.75rem; color:#fef08a;">(القداس)</small></th>
+                  <th style="width: 7%; text-align: center;">الخميس<br><small style="font-size:0.75rem; color:#fef08a;">(تسبيحة/محاضرة)</small></th>
+                  <th style="width: 7%; text-align: center;">الجمعة<br><small style="font-size:0.75rem; color:#fef08a;">(قداس/درس)</small></th>
+                  <th style="width: 4%; text-align: center;">حضور</th>
+                  <th style="width: 4%; text-align: center;">غياب</th>
+                  <th style="width: 5%; text-align: center;">النسبة</th>
+                </tr>
+              </thead>
+              <tbody id="matrix-table-tbody">
+                <tr>
+                  <td colspan="14" style="text-align: center; padding: 3rem;">
+                    <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="mobile-bottom-nav">
+      <a href="dashboard.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
+      <a href="attendance.html" class="mobile-nav-item"><i class="fa-solid fa-qrcode"></i><span>تسجيل الحضور</span></a>
+      <a href="students.html" class="mobile-nav-item"><i class="fa-solid fa-users"></i><span>الطلاب</span></a>
+      <a href="reports.html" class="mobile-nav-item active"><i class="fa-solid fa-file-word"></i><span>التقارير</span></a>
+    </nav>
+  </div>
+
+  <script type="module">
+    import "./js/app.js";
+    import { getWeeklyAttendanceMatrix } from "./js/attendance.js";
+    import { exportWeeklyMatrixWordReport, exportAllStudentsWordReport, exportStudentWordReport } from "./js/reports.js";
+    import { GRADES, getPastWeeks, getCurrentWeekId, showToast } from "./js/utils.js";
+    import { initStudentAutocomplete } from "./js/autocomplete.js";
+    import { getAllStudents } from "./js/students.js";
+
+    let currentWeekId = getCurrentWeekId();
+    let currentMatrixData = null;
+    let selectedStudentForExport = null;
+
+    // Populate Multi-Year Week Dropdown (2024 -> 2030)
+    const weekSelect = document.getElementById("week-select");
+    const singleStudentWeekFilter = document.getElementById("single-student-week-filter");
+    const multiYearWeeks = getPastWeeks();
+
+    weekSelect.innerHTML = multiYearWeeks.map(w => `
+      <option value="${w.weekId}" ${w.weekId === currentWeekId ? 'selected' : ''}>
+        ${w.label}
+      </option>
+    `).join("");
+
+    multiYearWeeks.forEach(w => {
+      singleStudentWeekFilter.innerHTML += `
+        <option value="${w.weekId}">${w.label}</option>
+      `;
+    });
+
+    // Populate Grade Filter
+    const filterGrade = document.getElementById("filter-grade");
+    GRADES.forEach(g => {
+      filterGrade.innerHTML += `<option value="${g}">${g}</option>`;
+    });
+
+    async function loadWeekMatrix() {
+      currentWeekId = weekSelect.value;
+      const tbody = document.getElementById("matrix-table-tbody");
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="14" style="text-align: center; padding: 3rem;">
+            <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+          </td>
+        </tr>
+      `;
+
+      currentMatrixData = await getWeeklyAttendanceMatrix(currentWeekId);
+      updateKpis(currentMatrixData.stats);
+      renderMatrixTable();
+    }
+
+    function updateKpis(stats) {
+      document.getElementById("kpi-week-total-students").textContent = stats.totalStudents;
+      document.getElementById("kpi-week-active-students").textContent = `${stats.activeStudents} نشط`;
+      document.getElementById("kpi-week-present-slots").textContent = stats.totalPresentSlots;
+      document.getElementById("kpi-week-absent-slots").textContent = stats.totalAbsentSlots;
+      document.getElementById("kpi-week-rate").textContent = `${stats.overallRate}%`;
+    }
+
+    function renderMatrixTable() {
+      if (!currentMatrixData) return;
+      const tbody = document.getElementById("matrix-table-tbody");
+      const search = document.getElementById("filter-search").value.trim().toLowerCase();
+      const grade = filterGrade.value;
+      const statusFilter = document.getElementById("filter-status").value;
+
+      const filtered = currentMatrixData.students.filter(s => {
+        const sCode = (s.studentCode || s.studentId || "").toLowerCase();
+        const matchSearch = !search || 
+          s.name.toLowerCase().includes(search) || 
+          sCode.includes(search) || 
+          (s.qrId && s.qrId.toLowerCase().includes(search));
+        const matchGrade = !grade || s.grade === grade;
+        
+        let matchStatus = true;
+        if (statusFilter === "present_active") matchStatus = s.presentDaysCount > 0;
+        if (statusFilter === "absent_all") matchStatus = s.presentDaysCount === 0;
+
+        return matchSearch && matchGrade && matchStatus;
+      });
+
+      document.getElementById("matrix-students-count").textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="14">
+              <div class="empty-state">
+                <i class="fa-solid fa-user-slash empty-state-icon"></i>
+                <h3 class="empty-state-title">لا توجد سجلات مطابقة للبحث</h3>
+                <p class="empty-state-desc">جرب اختيار أسبوع آخر أو إعادة تعيين الفلاتر.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((s, idx) => {
+        const rateColor = s.rate >= 75 ? "badge-present" : (s.rate >= 50 ? "badge-gold" : "badge-absent");
+
+        return `
+          <tr>
+            <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+            <td><strong style="color: var(--primary-700); font-family: monospace;"><i class="fa-solid fa-id-card"></i> ${s.studentCode}</strong></td>
+            <td>
+              <a href="student.html?id=${s.studentId}" style="font-weight: 700; color: var(--primary-600);">
+                <i class="fa-solid fa-user text-primary" style="margin-left: 4px;"></i> ${s.name}
+              </a>
+            </td>
+            <td><span class="badge badge-none">${s.grade}</span></td>
+            <td style="text-align: center;">${s.days.saturday?.status === 'present' ? '<span class="badge badge-present" title="صلاة العشية: حاضر">✅</span>' : (s.days.saturday?.status === 'absent' ? '<span class="badge badge-absent" title="صلاة العشية: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center;">${s.days.sunday?.status === 'present' ? '<span class="badge badge-present" title="القداس الإلهي: حاضر">✅</span>' : (s.days.sunday?.status === 'absent' ? '<span class="badge badge-absent" title="القداس الإلهي: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center;">${s.days.monday?.status === 'present' ? '<span class="badge badge-present" title="الماراثون: حاضر">✅</span>' : (s.days.monday?.status === 'absent' ? '<span class="badge badge-absent" title="الماراثون: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center;">${s.days.tuesday?.status === 'present' ? '<span class="badge badge-present" title="الماراثون: حاضر">✅</span>' : (s.days.tuesday?.status === 'absent' ? '<span class="badge badge-absent" title="الماراثون: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center;">${s.days.wednesday?.status === 'present' ? '<span class="badge badge-present" title="القداس الإلهي: حاضر">✅</span>' : (s.days.wednesday?.status === 'absent' ? '<span class="badge badge-absent" title="القداس الإلهي: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center;">${s.days.thursday?.status === 'present' ? '<span class="badge badge-present" title="التسبيحة والمحاضرة: حاضر">✅</span>' : (s.days.thursday?.status === 'absent' ? '<span class="badge badge-absent" title="التسبيحة والمحاضرة: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center;">${s.days.friday?.status === 'present' ? '<span class="badge badge-present" title="القداس والدرس: حاضر">✅</span>' : (s.days.friday?.status === 'absent' ? '<span class="badge badge-absent" title="القداس والدرس: غائب">❌</span>' : '—')}</td>
+            <td style="text-align: center; color: #059669; font-weight: bold;">${s.presentDaysCount}</td>
+            <td style="text-align: center; color: #dc2626; font-weight: bold;">${s.absentDaysCount}</td>
+            <td style="text-align: center;"><span class="badge ${rateColor}">${s.rate}%</span></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // Attach Autocomplete to table filter
+    initStudentAutocomplete({
+      input: "#filter-search",
+      placeholder: "ابحث باسم الطالب أو الكود...",
+      onSelect: (student) => {
+        document.getElementById("filter-search").value = student.name;
+        renderMatrixTable();
+      }
+    });
+
+    // Attach Autocomplete to Single Student Exporter
+    initStudentAutocomplete({
+      input: "#single-student-search",
+      placeholder: "ابحث باسم الطالب لتصدير تقريره...",
+      onSelect: (student) => {
+        selectedStudentForExport = student;
+        document.getElementById("single-student-search").value = `${student.name} (${student.studentCode || student.studentId})`;
+        document.getElementById("selected-student-id-export").value = student.studentId;
+      }
+    });
+
+    const reportRangeMode = document.getElementById("report-range-mode");
+    const customDateRangeBox = document.getElementById("custom-date-range-box");
+    const reportStartDate = document.getElementById("report-start-date");
+    const reportEndDate = document.getElementById("report-end-date");
+
+    function updateRangeUi() {
+      const mode = reportRangeMode.value;
+      const showCustom = mode === "custom";
+      customDateRangeBox.style.display = showCustom ? "block" : "none";
+      if (!showCustom) {
+        reportStartDate.value = "";
+        reportEndDate.value = "";
+      }
+    }
+
+    reportRangeMode.addEventListener("change", updateRangeUi);
+
+    function getSelectedReportDays() {
+      return Array.from(document.querySelectorAll("#report-day-picker input:checked")).map(el => el.value);
+    }
+
+    document.getElementById("btn-export-single-student").addEventListener("click", async () => {
+      const studentId = document.getElementById("selected-student-id-export").value;
+      const searchVal = document.getElementById("single-student-search").value.trim();
+
+      if (!studentId && !searchVal) {
+        showToast("يرجى اختيار طالب أولاً لتصدير تقريره", "warning");
+        return;
+      }
+
+      let targetStudentId = studentId;
+      if (!targetStudentId) {
+        const allStudents = await getAllStudents();
+        const found = allStudents.find(s => s.name.includes(searchVal) || (s.studentCode && s.studentCode.includes(searchVal)));
+        if (found) targetStudentId = found.studentId;
+      }
+
+      if (!targetStudentId) {
+        showToast("لم يتم العثور على الطالب المحدد", "error");
+        return;
+      }
+
+      const mode = reportRangeMode.value;
+      const selectedDays = getSelectedReportDays();
+      const reportOptions = {
+        mode,
+        selectedDays,
+        weekId: mode === "week" ? singleStudentWeekFilter.value || null : null,
+        month: mode === "month" ? (document.getElementById("single-student-week-filter").value || new Date().toISOString().slice(0, 7)) : null,
+        startDate: mode === "custom" ? reportStartDate.value : null,
+        endDate: mode === "custom" ? reportEndDate.value : null
+      };
+
+      showToast("جاري تجهيز وتصدير تقرير الطالب المنسق إلى Word...", "info");
+      await exportStudentWordReport(targetStudentId, reportOptions.weekId || null, reportOptions);
+    });
+
+    // Week selector change
+    weekSelect.addEventListener("change", loadWeekMatrix);
+
+    // Filter listeners
+    document.getElementById("filter-search").addEventListener("input", renderMatrixTable);
+    filterGrade.addEventListener("change", renderMatrixTable);
+    document.getElementById("filter-status").addEventListener("change", renderMatrixTable);
+    document.getElementById("filter-reset-btn").addEventListener("click", () => {
+      document.getElementById("filter-search").value = "";
+      filterGrade.value = "";
+      document.getElementById("filter-status").value = "";
+      renderMatrixTable();
+    });
+
+    // Word Export Buttons
+    document.getElementById("export-week-word-btn").addEventListener("click", async () => {
+      showToast("جاري تصدير تقرير الأسبوع المختار إلى Word...", "info");
+      await exportWeeklyMatrixWordReport(currentWeekId);
+    });
+
+    document.getElementById("export-master-word-btn").addEventListener("click", async () => {
+      showToast("جاري تصدير التقرير الشامل لجميع الطلاب إلى Word...", "info");
+      await exportAllStudentsWordReport();
+    });
+
+    window.addEventListener('church_attendance_updated', () => loadWeekMatrix());
+    window.addEventListener('church_students_updated', () => loadWeekMatrix());
+
+    loadWeekMatrix();
+  </script>
+</body>
+</html>
