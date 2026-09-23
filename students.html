@@ -685,48 +685,48 @@
         }
 
         // 2. Start Barcode / QR Detection Loop
-        if ("BarcodeDetector" in window) {
-          console.log("🚀 Using Ultra-Fast Native BarcodeDetector engine");
-          let detector;
+        let nativeStarted = false;
+        if ("BarcodeDetector" in window && typeof BarcodeDetector.getSupportedFormats === "function") {
           try {
             const supported = await BarcodeDetector.getSupportedFormats();
-            const preferredFormats = [
-              "qr_code", "code_128", "code_39", "code_93", 
-              "ean_13", "ean_8", "data_matrix", "upc_a", "upc_e"
-            ].filter(f => supported.includes(f));
-            detector = new BarcodeDetector({ formats: preferredFormats.length > 0 ? preferredFormats : supported });
-          } catch(e) {
-            detector = new BarcodeDetector();
-          }
+            if (Array.isArray(supported) && (supported.includes("qr_code") || supported.includes("code_128") || supported.length > 0)) {
+              console.log("🚀 Using Ultra-Fast Native BarcodeDetector engine with formats:", supported);
+              const detector = new BarcodeDetector({ formats: supported });
 
-          let scanning = true;
-          const scanLoop = async () => {
-            if (!scanning || !modalMediaStream) return;
-            try {
-              if (videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-                const barcodes = await detector.detect(videoEl);
-                if (barcodes && barcodes.length > 0) {
-                  const detectedValue = barcodes[0].rawValue;
-                  if (detectedValue) {
-                    scanning = false;
-                    console.log("🎯 BarcodeDetector scanned code:", detectedValue);
-                    window.stopCardScanInsideModal(true);
-                    window.handleCardScanDecoded(detectedValue);
-                    return;
+              let scanning = true;
+              const scanLoop = async () => {
+                if (!scanning || !modalMediaStream) return;
+                try {
+                  if (videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                    const barcodes = await detector.detect(videoEl);
+                    if (barcodes && barcodes.length > 0) {
+                      const detectedValue = barcodes[0].rawValue;
+                      if (detectedValue) {
+                        scanning = false;
+                        console.log("🎯 BarcodeDetector scanned code:", detectedValue);
+                        window.stopCardScanInsideModal(true);
+                        window.handleCardScanDecoded(detectedValue);
+                        return;
+                      }
+                    }
                   }
+                } catch (frameErr) {
+                  // Ignore single dropped frame
                 }
-              }
-            } catch (frameErr) {
-              // Ignore single dropped frame
-            }
-            if (scanning && modalMediaStream) {
+                if (scanning && modalMediaStream) {
+                  modalScanAnimFrameId = requestAnimationFrame(scanLoop);
+                }
+              };
               modalScanAnimFrameId = requestAnimationFrame(scanLoop);
+              nativeStarted = true;
             }
-          };
-          modalScanAnimFrameId = requestAnimationFrame(scanLoop);
+          } catch(detErr) {
+            console.warn("BarcodeDetector capability note, falling back cleanly to Html5Qrcode:", detErr.message);
+          }
+        }
 
-        } else if (typeof Html5Qrcode !== "undefined") {
-          // Fallback to Html5Qrcode (e.g. older iOS Safari)
+        if (!nativeStarted && typeof Html5Qrcode !== "undefined") {
+          // Fallback to Html5Qrcode (e.g. older iOS Safari or platforms where BarcodeDetector lacks qr_code)
           console.log("ℹ️ BarcodeDetector not available, using Html5Qrcode engine");
           if (videoEl) videoEl.style.display = "none";
           if (qrReaderEl) {

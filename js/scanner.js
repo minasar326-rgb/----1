@@ -89,67 +89,66 @@ export async function initScanner(elementId, onSuccess, onError) {
   }
 
   try {
-    // 1. Check if Native BarcodeDetector is supported (Android Chrome, Windows, Mac, Edge)
-    if ("BarcodeDetector" in window) {
-      console.log("🚀 [Scanner] Starting Native BarcodeDetector Engine...");
-      nativeMediaStream = await requestUniversalCameraStream(currentFacingMode);
-
-      container.innerHTML = "";
-      const videoEl = document.createElement("video");
-      videoEl.id = `${elementId}-live-video`;
-      videoEl.autoplay = true;
-      videoEl.muted = true;
-      videoEl.playsInline = true;
-      videoEl.setAttribute("playsinline", "true");
-      videoEl.setAttribute("webkit-playsinline", "true");
-      videoEl.style.width = "100%";
-      videoEl.style.height = "100%";
-      videoEl.style.objectFit = "cover";
-
-      container.appendChild(videoEl);
-      videoEl.srcObject = nativeMediaStream;
-      await videoEl.play();
-
-      let detector;
+    // 1. Try Native BarcodeDetector Engine if supported
+    let nativeStarted = false;
+    if ("BarcodeDetector" in window && typeof BarcodeDetector.getSupportedFormats === "function") {
       try {
         const supported = await BarcodeDetector.getSupportedFormats();
-        const preferredFormats = [
-          "qr_code", "code_128", "code_39", "code_93", 
-          "ean_13", "ean_8", "data_matrix", "upc_a", "upc_e"
-        ].filter(f => supported.includes(f));
-        detector = new BarcodeDetector({ formats: preferredFormats.length > 0 ? preferredFormats : supported });
-      } catch (e) {
-        detector = new BarcodeDetector();
-      }
+        if (Array.isArray(supported) && (supported.includes("qr_code") || supported.includes("code_128") || supported.length > 0)) {
+          console.log("🚀 [Scanner] Initializing Native BarcodeDetector Engine with formats:", supported);
+          nativeMediaStream = await requestUniversalCameraStream(currentFacingMode);
 
-      isScanning = true;
-      const scanLoop = async () => {
-        if (!isScanning || !nativeMediaStream) return;
-        try {
-          if (videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            const barcodes = await detector.detect(videoEl);
-            if (barcodes && barcodes.length > 0) {
-              const code = barcodes[0].rawValue;
-              if (code) {
-                handleDecodedCode(code, onSuccess);
+          container.innerHTML = "";
+          const videoEl = document.createElement("video");
+          videoEl.id = `${elementId}-live-video`;
+          videoEl.autoplay = true;
+          videoEl.muted = true;
+          videoEl.playsInline = true;
+          videoEl.setAttribute("playsinline", "true");
+          videoEl.setAttribute("webkit-playsinline", "true");
+          videoEl.style.width = "100%";
+          videoEl.style.height = "100%";
+          videoEl.style.objectFit = "cover";
+
+          container.appendChild(videoEl);
+          videoEl.srcObject = nativeMediaStream;
+          await videoEl.play();
+
+          const detector = new BarcodeDetector({ formats: supported });
+          isScanning = true;
+          const scanLoop = async () => {
+            if (!isScanning || !nativeMediaStream) return;
+            try {
+              if (videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                const barcodes = await detector.detect(videoEl);
+                if (barcodes && barcodes.length > 0) {
+                  const code = barcodes[0].rawValue;
+                  if (code) {
+                    handleDecodedCode(code, onSuccess);
+                  }
+                }
               }
+            } catch (frameErr) {
+              // ignore transient frame drop
             }
-          }
-        } catch (frameErr) {
-          // ignore transient frame drop
-        }
-        if (isScanning && nativeMediaStream) {
-          nativeScanAnimFrameId = requestAnimationFrame(scanLoop);
-        }
-      };
+            if (isScanning && nativeMediaStream) {
+              nativeScanAnimFrameId = requestAnimationFrame(scanLoop);
+            }
+          };
 
-      nativeScanAnimFrameId = requestAnimationFrame(scanLoop);
-      console.log("✅ [Scanner] Native BarcodeDetector live loop active at 60 FPS!");
-      return;
+          nativeScanAnimFrameId = requestAnimationFrame(scanLoop);
+          nativeStarted = true;
+          console.log("✅ [Scanner] Native BarcodeDetector live loop active at 60 FPS!");
+          return;
+        }
+      } catch (nativeErr) {
+        console.warn("Native BarcodeDetector capability note, falling back cleanly to Html5Qrcode:", nativeErr.message);
+        await stopScanner();
+      }
     }
 
-    // 2. Fallback: Html5Qrcode Engine (iOS Safari / WebViews)
-    console.log("ℹ️ [Scanner] Starting Html5Qrcode fallback engine...");
+    // 2. Fallback: Html5Qrcode Engine (iOS Safari / Standard Web)
+    console.log("ℹ️ [Scanner] Starting Html5Qrcode engine...");
     if (typeof Html5Qrcode === "undefined") {
       await loadQrLibrary();
     }

@@ -254,12 +254,20 @@
               </div>
             </div>
             <div class="card-body" style="padding: 1.25rem;">
-              <div class="camera-box">
-                <div id="attendance-qr-reader" style="width: 100%; height: 100%;"></div>
-                <div class="scanner-overlay">
+              <div class="camera-box" style="height: 330px; position: relative; overflow: hidden; background: #000; border-radius: var(--radius-lg);">
+                <div id="attendance-qr-reader" style="position: absolute; inset: 0; width: 100%; height: 100%;"></div>
+                <div class="scanner-overlay" id="scanner-laser-overlay" style="display: none; pointer-events: none;">
                   <div class="scanner-target-box">
                     <div class="scanner-laser"></div>
                   </div>
+                </div>
+                <!-- Start Camera Tap Prompt (if blocked by mobile browser autoplay policy) -->
+                <div id="camera-start-prompt" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.95); z-index: 15; cursor: pointer; text-align: center; padding: 1.5rem;">
+                  <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; margin-bottom: 0.85rem; box-shadow: 0 0 25px rgba(99, 102, 241, 0.6); color: white; font-size: 1.6rem;">
+                    <i class="fa-solid fa-camera"></i>
+                  </div>
+                  <div style="font-weight: 800; font-size: 1.1rem; color: #fff; margin-bottom: 0.35rem;">اضغط هنا لتشغيل الكاميرا المباشرة</div>
+                  <div style="font-size: 0.82rem; color: #94a3b8;">لتسجيل حضور الطلاب عبر مسح كارنيه الـ QR مباشرة</div>
                 </div>
               </div>
 
@@ -820,8 +828,20 @@
     // Initialize Camera Scanner with Safe State Tracking
     let isCameraRunning = false;
 
+    const cameraPrompt = document.getElementById("camera-start-prompt");
+    const laserOverlay = document.getElementById("scanner-laser-overlay");
+
+    if (cameraPrompt) {
+      cameraPrompt.addEventListener("click", () => {
+        startCamera();
+      });
+    }
+
     async function startCamera() {
       try {
+        if (cameraPrompt) cameraPrompt.style.display = "none";
+        if (laserOverlay) laserOverlay.style.display = "flex";
+
         await initScanner("attendance-qr-reader", async (decodedText) => {
           await handleScannedCode(decodedText.trim());
         });
@@ -832,6 +852,8 @@
       } catch (err) {
         console.warn("Camera auto-start notice:", err);
         isCameraRunning = false;
+        if (cameraPrompt) cameraPrompt.style.display = "flex";
+        if (laserOverlay) laserOverlay.style.display = "none";
         document.getElementById("camera-btn-text").textContent = "تشغيل الكاميرا";
         document.getElementById("scanner-status-badge").className = "badge badge-inactive";
         document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-pause"></i> متوقفة`;
@@ -843,6 +865,8 @@
     document.getElementById("toggle-camera-btn").addEventListener("click", async () => {
       if (isCameraRunning) {
         await stopScanner();
+        if (cameraPrompt) cameraPrompt.style.display = "flex";
+        if (laserOverlay) laserOverlay.style.display = "none";
         document.getElementById("camera-btn-text").textContent = "تشغيل الكاميرا";
         document.getElementById("scanner-status-badge").className = "badge badge-inactive";
         document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-pause"></i> متوقفة`;
