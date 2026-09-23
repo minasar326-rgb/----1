@@ -10,8 +10,13 @@
   <link rel="stylesheet" href="css/responsive.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4338ca">
-  <!-- HTML5 QR Code Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- HTML5 QR Code Scanner Library (Local First + CDN Fallback) -->
+  <script src="js/html5-qrcode.min.js"></script>
+  <script>
+    if (typeof Html5Qrcode === "undefined") {
+      document.write('<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\\/script>');
+    }
+  </script>
   <style>
     .day-selector-pills-7 {
       display: flex;
@@ -181,6 +186,10 @@
           <h2>تسجيل الحضور بالـ QR لجميع أيام الأسبوع</h2>
         </div>
         <div class="topbar-right flex gap-2" style="align-items: center;">
+          <a href="students.html?action=new" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>إضافة طالب</span>
+          </a>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <label for="attendance-week-select" style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin: 0;">الأسبوع:</label>
             <select id="attendance-week-select" class="form-control form-control-sm" style="font-weight: 700; width: 170px;">
@@ -362,6 +371,68 @@
       </main>
     </div>
 
+    <!-- Quick Register Modal for New Student Scanned via QR -->
+    <div class="modal" id="quick-register-modal" style="display: none; position: fixed; inset: 0; z-index: 1100; align-items: center; justify-content: center;">
+      <div class="modal-backdrop" id="quick-register-backdrop" style="position: absolute; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px);"></div>
+      <div class="modal-card" style="position: relative; z-index: 1101; background: var(--bg-surface); border-radius: var(--radius-xl); max-width: 520px; width: 92%; box-shadow: var(--shadow-xl); overflow: hidden;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; border-bottom: 1px solid var(--border-light);">
+          <h3 class="modal-title" style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-user-plus text-primary"></i>
+            <span>طالب جديد تم مسح كارنيهه</span>
+          </h3>
+          <button type="button" class="btn-icon" id="close-quick-register-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="quick-register-form">
+          <div class="modal-body" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+            <div class="alert alert-info" style="font-size: 0.85rem; padding: 0.75rem; border-radius: 8px; background: rgba(79, 70, 229, 0.08); border-right: 4px solid var(--primary-600); color: var(--text-main);">
+              <i class="fa-solid fa-circle-check text-primary"></i> تم التعرف على اسم الطالب تلقائياً من الكارنيه. يرجى تأكيد المرحلة المكتوبة بالكارنيه لحفظه ومتابعة الحضور فوراً.
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block;">اسم الطالب (تم جلبه تلقائياً)</label>
+              <input type="text" id="quick-student-name" class="form-control" required style="font-weight: bold; color: var(--primary-700); background: var(--bg-surface-subtle);">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block;">المرحلة الدراسية</label>
+              <select id="quick-student-stage" class="form-control" required style="font-weight: 600;">
+                <option value="سنة سادسة">سنة سادسة</option>
+                <option value="أولى إعدادي">أولى إعدادي</option>
+                <option value="تانية إعدادي">تانية إعدادي</option>
+                <option value="تمهيدي">تمهيدي</option>
+                <option value="أولى ثانوي" selected>أولى ثانوي</option>
+                <option value="تانية ثانوي">تانية ثانوي</option>
+                <option value="خريجين">خريجين</option>
+                <option value="custom">مرحلة أخرى (كتابة يدوية)...</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="quick-custom-stage-container" style="display: none;">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block;">اكتب المرحلة بالكارنيه</label>
+              <input type="text" id="quick-custom-stage" class="form-control" placeholder="اكتب اسم المرحلة هنا...">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block;">كود الطالب أو رقم الكارنيه</label>
+              <input type="text" id="quick-student-code" class="form-control" readonly style="background: var(--bg-surface-subtle);">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block;">رقم الهاتف (اختياري)</label>
+              <input type="tel" id="quick-student-phone" class="form-control" placeholder="01xxxxxxxxx">
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 1rem 1.25rem; border-top: 1px solid var(--border-light); display: flex; gap: 0.75rem;">
+            <button type="submit" class="btn btn-primary flex-1 btn-lg" id="quick-register-submit-btn" style="min-height: 46px;">
+              <i class="fa-solid fa-check"></i>
+              <span>حفظ وتسجيل الحضور الآن</span>
+            </button>
+            <button type="button" class="btn btn-outline" id="quick-register-cancel-btn">إلغاء</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Mobile Nav -->
     <nav class="mobile-bottom-nav">
       <a href="dashboard.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
@@ -373,10 +444,10 @@
 
   <script type="module">
     import "./js/app.js";
-    import { getStudentByQrId, getStudentById, getAllStudents } from "./js/students.js";
+    import { getStudentByQrId, getStudentById, getAllStudents, addStudent } from "./js/students.js";
     import { recordStudentAttendance, getAttendanceRecord, isSpiritualNotebookRecorded, getPartName } from "./js/attendance.js";
     import { initScanner, stopScanner, toggleCameraFacing } from "./js/scanner.js";
-    import { ATTENDANCE_PARTS, ALL_DAYS, getCurrentWeekId, getWeekDetails, getPastWeeks, getActualDayDate, showToast, playErrorBeep, playSuccessBeep } from "./js/utils.js";
+    import { ATTENDANCE_PARTS, ALL_DAYS, getCurrentWeekId, getWeekDetails, getPastWeeks, getActualDayDate, showToast, playErrorBeep, playSuccessBeep, STAGES, parseStudentQrPayload, mapLegacyGradeToStage } from "./js/utils.js";
     import { initStudentAutocomplete } from "./js/autocomplete.js";
 
     let currentDay = "saturday";
@@ -384,6 +455,68 @@
     let currentWeekId = getCurrentWeekId();
     let sessionScans = [];
     let isCameraRunning = true;
+
+    // Quick Register Modal Elements
+    const quickModal = document.getElementById("quick-register-modal");
+    const quickStageSelect = document.getElementById("quick-student-stage");
+    const quickCustomStageContainer = document.getElementById("quick-custom-stage-container");
+    const quickCustomStageInput = document.getElementById("quick-custom-stage");
+
+    quickStageSelect.addEventListener("change", () => {
+      if (quickStageSelect.value === "custom") {
+        quickCustomStageContainer.style.display = "block";
+        quickCustomStageInput.focus();
+      } else {
+        quickCustomStageContainer.style.display = "none";
+      }
+    });
+
+    document.getElementById("close-quick-register-btn").addEventListener("click", () => {
+      quickModal.style.display = "none";
+    });
+    document.getElementById("quick-register-cancel-btn").addEventListener("click", () => {
+      quickModal.style.display = "none";
+    });
+    document.getElementById("quick-register-backdrop").addEventListener("click", () => {
+      quickModal.style.display = "none";
+    });
+
+    document.getElementById("quick-register-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("quick-student-name").value.trim();
+      let stage = quickStageSelect.value;
+      if (stage === "custom") {
+        stage = quickCustomStageInput.value.trim() || "أولى ثانوي";
+      }
+      const studentCode = document.getElementById("quick-student-code").value.trim();
+      const phone = document.getElementById("quick-student-phone").value.trim();
+      const qrId = studentCode;
+
+      const submitBtn = document.getElementById("quick-register-submit-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ والتسجيل...`;
+
+      try {
+        const newStudent = await addStudent({
+          name,
+          stage,
+          phone,
+          studentCode,
+          qrId
+        });
+
+        if (newStudent) {
+          quickModal.style.display = "none";
+          await handleScannedCode(newStudent.studentCode || newStudent.studentId);
+        }
+      } catch (err) {
+        console.error("Quick register error:", err);
+        showToast("حدث خطأ أثناء حفظ الطالب", "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-check"></i> <span>حفظ وتسجيل الحضور الآن</span>`;
+      }
+    });
 
     // Detect Day from URL or current actual day of week
     const urlParams = new URLSearchParams(window.location.search);
@@ -456,35 +589,31 @@
         const record = await getAttendanceRecord(currentWeekId, student.studentId, currentDay, part.id);
         const isRecorded = record && record.status === "present";
         
-        let notebookNotice = "";
-        let disabledAttr = "";
-
+        let subNote = "";
         if (part.id === "spiritualNotebook") {
-          const notebookDone = await isSpiritualNotebookRecorded(currentWeekId, student.studentId);
-          if (notebookDone && !isRecorded) {
-            notebookNotice = `<span class="badge badge-gold text-xs" style="margin-right:auto;">تم تسليمها سابقاً</span>`;
-            disabledAttr = "disabled";
+          const recordedEarlier = await isSpiritualNotebookRecorded(currentWeekId, student.studentId);
+          if (recordedEarlier && !isRecorded) {
+            subNote = `<span class="text-xs text-danger">(مسجلة مسبقاً هذا الأسبوع)</span>`;
           }
         }
 
         html += `
-          <label class="part-checkbox-label" style="${disabledAttr ? 'opacity: 0.6; cursor: not-allowed;' : ''}">
+          <label class="part-checkbox-label ${isRecorded ? 'already-recorded' : ''}">
             <input 
               type="checkbox" 
               name="attendance-part" 
               value="${part.id}" 
               ${isRecorded ? 'checked disabled' : 'checked'}
-              ${disabledAttr}
-              style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-600);"
             >
-            <i class="fa-solid ${part.icon || 'fa-check'} text-primary"></i>
-            <span>${part.name}</span>
-            ${isRecorded ? '<span class="badge badge-present text-xs" style="margin-right:auto;"><i class="fa-solid fa-check"></i> مسجل بالفعل</span>' : ''}
-            ${notebookNotice}
+            <div class="part-label-info">
+              <i class="fa-solid ${part.icon} text-primary"></i>
+              <span>${part.name}</span>
+              ${subNote}
+            </div>
+            ${isRecorded ? '<span class="badge badge-success text-xs">تم تسجيله سابقاً ✅</span>' : ''}
           </label>
         `;
       }
-
       container.innerHTML = html;
     }
 
@@ -496,41 +625,80 @@
     });
 
     // Handle Scanned / Selected Student Code
-    async function handleScannedCode(code) {
-      if (!code) return;
+    async function handleScannedCode(rawCode) {
+      if (!rawCode) return;
+      const code = String(rawCode).trim();
+      
+      // 1. Try finding existing student by qrId, studentCode, or studentId
       let student = await getStudentByQrId(code);
       if (!student) {
         student = await getStudentById(code);
       }
       if (!student) {
-        // Try match by studentCode
         const all = await getAllStudents();
-        student = all.find(s => (s.studentCode && s.studentCode.toLowerCase() === code.toLowerCase()) || (s.qrId && s.qrId.toLowerCase() === code.toLowerCase()));
+        const cleanCode = code.toLowerCase();
+        student = all.find(s => 
+          (s.studentCode && s.studentCode.toLowerCase() === cleanCode) || 
+          (s.qrId && s.qrId.toLowerCase() === cleanCode) ||
+          (s.name && s.name.trim().toLowerCase() === cleanCode)
+        );
       }
 
-      if (!student) {
-        playErrorBeep();
-        showToast("لم يتم العثور على طالب مرتبط بهذا الكود", "error");
+      // 2. Also test if QR is payload with name
+      const parsed = parseStudentQrPayload(code);
+      if (!student && parsed?.name) {
+        const all = await getAllStudents();
+        const cleanParsedName = parsed.name.toLowerCase();
+        student = all.find(s => s.name.trim().toLowerCase() === cleanParsedName);
+      }
+
+      // Case A: Student is ALREADY REGISTERED -> Load directly, NEVER ask for stage or name!
+      if (student) {
+        if (student.status === "inactive") {
+          playErrorBeep();
+          showToast(`الطالب (${student.name}) معطل في النظام.`, "warning");
+          return;
+        }
+
+        activeStudent = student;
+        document.getElementById("panel-student-name").textContent = student.name;
+        document.getElementById("panel-avatar").textContent = student.name.charAt(0);
+        document.getElementById("panel-student-grade").textContent = student.stage || student.grade || "مرحلة غير محددة";
+        document.getElementById("panel-student-code").innerHTML = `<i class="fa-solid fa-id-card"></i> ${student.studentCode || student.studentId}`;
+        document.getElementById("panel-student-qrid").textContent = `QR: ${student.qrId || student.studentCode}`;
+
+        await renderPartsChecklist(student);
+
+        document.getElementById("waiting-placeholder").style.display = "none";
+        document.getElementById("scanned-student-panel").style.display = "block";
+        playSuccessBeep();
         return;
       }
 
-      if (student.status === "inactive") {
-        playErrorBeep();
-        showToast(`الطالب (${student.name}) معطل في النظام.`, "warning");
-        return;
+      // Case B: Student is NEW -> Pre-fill name and prompt ONLY for missing stage
+      const studentName = parsed?.name || (code.length > 3 && !code.startsWith("STU-") && !/^\d+$/.test(code) ? code : "");
+      const detectedStage = parsed?.stage || "";
+      const studentCode = parsed?.studentCode || (code.startsWith("STU-") ? code : `STU-${Math.floor(1000 + Math.random() * 9000)}`);
+
+      document.getElementById("quick-student-name").value = studentName;
+      document.getElementById("quick-student-code").value = studentCode;
+
+      if (detectedStage && STAGES.includes(detectedStage)) {
+        quickStageSelect.value = detectedStage;
+        quickCustomStageContainer.style.display = "none";
+      } else if (detectedStage) {
+        quickStageSelect.value = "custom";
+        quickCustomStageContainer.style.display = "block";
+        quickCustomStageInput.value = detectedStage;
+      } else {
+        quickStageSelect.value = "أولى ثانوي";
+        quickCustomStageContainer.style.display = "none";
       }
 
-      activeStudent = student;
-      document.getElementById("panel-student-name").textContent = student.name;
-      document.getElementById("panel-avatar").textContent = student.name.charAt(0);
-      document.getElementById("panel-student-grade").textContent = student.grade;
-      document.getElementById("panel-student-code").innerHTML = `<i class="fa-solid fa-id-card"></i> ${student.studentCode || student.studentId}`;
-      document.getElementById("panel-student-qrid").textContent = `QR: ${student.qrId}`;
-
-      await renderPartsChecklist(student);
-
-      document.getElementById("waiting-placeholder").style.display = "none";
-      document.getElementById("scanned-student-panel").style.display = "block";
+      document.getElementById("quick-student-phone").value = parsed?.phone || "";
+      quickModal.style.display = "flex";
+      playSuccessBeep();
+      showToast("تم مسح كارنيه لطالب جديد - يرجى تأكيد المرحلة لحفظه", "info");
     }
 
     // Confirm Attendance Submit

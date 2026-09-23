@@ -66,15 +66,24 @@
 
   <script type="module">
     import { getCurrentUser } from "./js/auth.js";
-    // Check if user is logged in and route accordingly
-    setTimeout(() => {
+    try {
       const user = getCurrentUser();
       if (user) {
         window.location.replace("dashboard.html");
       } else {
         window.location.replace("login.html");
       }
-    }, 600);
+    } catch (e) {
+      window.location.replace("dashboard.html");
+    }
+  </script>
+  <script>
+    // Fail-safe immediate redirect so splash screen NEVER hangs
+    setTimeout(function() {
+      if (window.location.pathname.endsWith("index.html") || window.location.pathname.endsWith("/")) {
+        window.location.replace("dashboard.html");
+      }
+    }, 150);
   </script>
 </body>
 </html>

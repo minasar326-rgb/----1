@@ -1,5 +1,12 @@
 {
-  "devDependencies": {
-    "firebase-tools": "^15.27.0"
-  }
+  "name": "church-attendance-qr",
+  "version": "2.0.0",
+  "description": "نظام إدارة حضور وغياب الطلاب الذكي بالكارنيه والـ QR - كنيسة مارمينا العجايبي بكوم المحرص",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "deploy": "firebase deploy --only hosting,firestore"
+  },
+  "private": true
 }

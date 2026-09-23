@@ -66,16 +66,16 @@ export async function initScanner(elementId, onSuccess, onError) {
       }
     };
 
-    // 1. Try with facingMode
+    // 1. Try with facingMode (using ideal to prevent OverconstrainedError on front-only cameras)
     try {
       await html5QrCode.start(
-        { facingMode: currentFacingMode },
+        { facingMode: { ideal: currentFacingMode } },
         config,
         (decodedText) => handleDecodedCode(decodedText, onSuccess),
         () => {}
       );
       isScanning = true;
-      console.log("✅ Camera started with facing mode:", currentFacingMode);
+      console.log("✅ Camera started with ideal facing mode:", currentFacingMode);
       return;
     } catch (facingErr) {
       console.warn("FacingMode failed, trying direct camera device selection:", facingErr.message);
@@ -160,6 +160,23 @@ export async function stopScanner() {
       isScanning = false;
     }
   }
+
+  // Force stop any native MediaStreamTracks on any video element in the DOM
+  try {
+    if (typeof document !== "undefined") {
+      const videos = document.querySelectorAll("video");
+      videos.forEach(v => {
+        if (v.srcObject && typeof v.srcObject.getTracks === "function") {
+          v.srcObject.getTracks().forEach(track => {
+            try { track.stop(); } catch (err) {}
+          });
+          v.srcObject = null;
+        }
+      });
+    }
+  } catch (trackErr) {
+    console.warn("Notice while releasing video streams:", trackErr.message);
+  }
 }
 
 /**
@@ -172,14 +189,21 @@ function loadQrLibrary() {
       return;
     }
     const script = document.createElement("script");
-    script.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+    script.src = "js/html5-qrcode.min.js";
     script.onload = () => resolve();
     script.onerror = () => {
-      // Fallback CDN
+      // Fallback unpkg CDN
       const fallbackScript = document.createElement("script");
-      fallbackScript.src = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
+      fallbackScript.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
       fallbackScript.onload = () => resolve();
-      fallbackScript.onerror = () => reject(new Error("Failed to load QR scanner library"));
+      fallbackScript.onerror = () => {
+        // Fallback jsdelivr CDN
+        const jsdelivrScript = document.createElement("script");
+        jsdelivrScript.src = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
+        jsdelivrScript.onload = () => resolve();
+        jsdelivrScript.onerror = () => reject(new Error("Failed to load QR scanner library"));
+        document.head.appendChild(jsdelivrScript);
+      };
       document.head.appendChild(fallbackScript);
     };
     document.head.appendChild(script);

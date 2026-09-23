@@ -18,7 +18,7 @@ import {
   serverTimestamp,
   isDemoMode 
 } from "./firebase-config.js";
-import { showToast, GRADES } from "./utils.js";
+import { showToast, GRADES, STAGES, STAGE_GROUPS, mapLegacyGradeToStage } from "./utils.js";
 import { logActivity } from "./activity.js";
 import { sanitizeInput, validateName, validateStudentCode, validatePhone, escapeHTML } from "./security.js";
 
@@ -30,7 +30,8 @@ const INITIAL_DEMO_STUDENTS = [
     studentId: "STU-1001",
     studentCode: "STU-1001",
     name: "مينا سورياني غبريال",
-    grade: "ثانوي - أولى ثانوي",
+    stage: "أولى ثانوي",
+    grade: "أولى ثانوي",
     phone: "01234567890",
     qrId: "STU-92841",
     status: "active",
@@ -40,7 +41,8 @@ const INITIAL_DEMO_STUDENTS = [
     studentId: "STU-1002",
     studentCode: "STU-1002",
     name: "بيشوي عادل سمير",
-    grade: "ثانوي - ثانية ثانوي",
+    stage: "تانية ثانوي",
+    grade: "تانية ثانوي",
     phone: "01098765432",
     qrId: "STU-88412",
     status: "active",
@@ -50,7 +52,8 @@ const INITIAL_DEMO_STUDENTS = [
     studentId: "STU-1003",
     studentCode: "STU-1003",
     name: "كيرلس سامح فايز",
-    grade: "إعدادي - ثالثة إعدادي",
+    stage: "تانية إعدادي",
+    grade: "تانية إعدادي",
     phone: "01122334455",
     qrId: "STU-77215",
     status: "active",
@@ -120,10 +123,15 @@ export function getDemoStudents() {
         return INITIAL_DEMO_STUDENTS;
       }
       const parsed = JSON.parse(data);
-      return parsed.map(s => ({
-        ...s,
-        studentCode: s.studentCode || s.studentId
-      }));
+      return parsed.map(s => {
+        const stageVal = mapLegacyGradeToStage(s.stage || s.grade);
+        return {
+          ...s,
+          stage: stageVal,
+          grade: stageVal,
+          studentCode: s.studentCode || s.studentId
+        };
+      });
     }
   } catch (e) {}
 
@@ -154,27 +162,32 @@ export function saveDemoStudents(students) {
  * Background silent synchronization from Cloud Firestore
  */
 async function syncStudentsFromCloud() {
-  if (isCloudSyncing || typeof window === 'undefined' || !db) return;
+  if (isCloudSyncing || typeof window === 'undefined') return;
   isCloudSyncing = true;
   try {
-    const q = query(collection(db, "students"), orderBy("name", "asc"));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(collection(db, "students"));
     const list = [];
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      if (data && data.name) {
-        list.push({
-          ...data,
-          studentCode: data.studentCode || data.studentId
-        });
-      }
-    });
+    if (snapshot && typeof snapshot.forEach === "function") {
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data && data.name) {
+          const stageVal = mapLegacyGradeToStage(data.stage || data.grade);
+          list.push({
+            ...data,
+            stage: stageVal,
+            grade: stageVal,
+            studentCode: data.studentCode || data.studentId
+          });
+        }
+      });
+    }
 
     if (list.length > 0) {
       saveDemoStudents(list);
+      window.dispatchEvent(new CustomEvent("church_students_updated", { detail: list }));
     }
   } catch (err) {
-    // Silent catch so UI is never disrupted
+    console.warn("syncStudentsFromCloud note:", err.message);
   } finally {
     isCloudSyncing = false;
   }
@@ -293,7 +306,7 @@ export { searchStudents as searchStudentsAutocomplete };
 /**
  * Adds a new student in 0ms (Instant Local-First Save + Non-blocking Cloud Sync)
  */
-export async function addStudent({ name, grade, phone = "", studentCode = "", qrId = "" }) {
+export async function addStudent({ name, stage, grade, phone = "", studentCode = "", qrId = "" }) {
   // 1. Name Validation
   const nameVal = validateName(name);
   if (!nameVal.valid) {
@@ -301,10 +314,12 @@ export async function addStudent({ name, grade, phone = "", studentCode = "", qr
     return null;
   }
 
-  if (!grade) {
-    showToast("يرجى اختيار المرحلة أو الصف", "warning");
+  const rawStage = stage || grade;
+  if (!rawStage) {
+    showToast("يرجى اختيار المرحلة الدراسية", "warning");
     return null;
   }
+  const cleanStage = mapLegacyGradeToStage(rawStage);
 
   // 2. Phone Validation
   const phoneVal = validatePhone(phone);
@@ -344,7 +359,8 @@ export async function addStudent({ name, grade, phone = "", studentCode = "", qr
     studentId,
     studentCode: cleanCode,
     name: nameVal.clean,
-    grade: sanitizeInput(grade),
+    stage: cleanStage,
+    grade: cleanStage,
     phone: phoneVal.clean,
     qrId: cleanQr,
     status: "active",
@@ -366,7 +382,7 @@ export async function addStudent({ name, grade, phone = "", studentCode = "", qr
 
   // 3. Non-blocking Activity Log
   try {
-    logActivity("إضافة طالب جديد", { studentName: newStudent.name, studentCode: cleanCode, qrId: cleanQr }, studentId, "student").catch(() => {});
+    logActivity("إضافة طالب جديد", { studentName: newStudent.name, studentCode: cleanCode, stage: cleanStage, qrId: cleanQr }, studentId, "student").catch(() => {});
   } catch (e) {}
 
   showToast(`تمت إضافة الطالب ${newStudent.name} بنجاح ✅`, "success");
@@ -376,7 +392,7 @@ export async function addStudent({ name, grade, phone = "", studentCode = "", qr
 /**
  * Updates student information in 0ms
  */
-export async function updateStudent(studentId, { name, grade, phone, studentCode, qrId, status }) {
+export async function updateStudent(studentId, { name, stage, grade, phone, studentCode, qrId, status }) {
   if (!studentId) return false;
 
   const list = getDemoStudents();
@@ -408,10 +424,14 @@ export async function updateStudent(studentId, { name, grade, phone, studentCode
     }
   }
 
+  const rawStage = stage || grade;
+  const cleanStage = rawStage ? mapLegacyGradeToStage(rawStage) : (current.stage || current.grade || "أولى ثانوي");
+
   const updatedStudent = {
     ...current,
     name: name ? sanitizeInput(name).trim() : current.name,
-    grade: grade ? sanitizeInput(grade) : current.grade,
+    stage: cleanStage,
+    grade: cleanStage,
     phone: phone !== undefined ? sanitizeInput(phone).trim() : current.phone,
     studentCode: updatedCode,
     qrId: updatedQr,

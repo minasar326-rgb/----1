@@ -6,20 +6,280 @@
    Constants & Part Definitions
    ========================================================================== */
 
-export const GRADES = [
-  "حضانة",
-  "ابتدائي - أولى وتانية",
-  "ابتدائي - تالتة ورابعة",
-  "ابتدائي - خامسة وسادسة",
-  "إعدادي - أولى إعدادي",
-  "إعدادي - ثانية إعدادي",
-  "إعدادي - ثالثة إعدادي",
-  "ثانوي - أولى ثانوي",
-  "ثانوي - ثانية ثانوي",
-  "ثانوي - ثالثة ثانوي",
-  "جامعيين وخريجين",
-  "خدام وخادمات"
+export const STAGES = [
+  "سنة سادسة",
+  "أولى إعدادي",
+  "تانية إعدادي",
+  "تمهيدي",
+  "أولى ثانوي",
+  "تانية ثانوي",
+  "خريجين"
 ];
+
+export const STAGE_GROUPS = {
+  group1: {
+    id: "group1",
+    name: "المجموعة الأولى (سنة سادسة + أولى إعدادي + تانية إعدادي)",
+    shortName: "سنة سادسة + أولى وتانية إعدادي",
+    stages: ["سنة سادسة", "أولى إعدادي", "تانية إعدادي"]
+  },
+  group2: {
+    id: "group2",
+    name: "المجموعة الثانية (تمهيدي)",
+    shortName: "تمهيدي",
+    stages: ["تمهيدي"]
+  },
+  group3: {
+    id: "group3",
+    name: "المجموعة الثالثة (أولى ثانوي + تانية ثانوي)",
+    shortName: "أولى وتانية ثانوي",
+    stages: ["أولى ثانوي", "تانية ثانوي"]
+  },
+  group4: {
+    id: "group4",
+    name: "المجموعة الرابعة (خريجين)",
+    shortName: "خريجين",
+    stages: ["خريجين"]
+  }
+};
+
+export const GRADES = STAGES;
+
+export function mapLegacyGradeToStage(grade) {
+  if (!grade) return "أولى ثانوي";
+  const g = String(grade).trim();
+  if (STAGES.includes(g)) return g;
+  if (g.includes("سادسة") || g.includes("خامسة") || g.includes("ابتدائي")) return "سنة سادسة";
+  if (g.includes("أولى إعدادي") || g.includes("اولى اعدادي") || g.includes("أولي إعدادي")) return "أولى إعدادي";
+  if (g.includes("ثانية إعدادي") || g.includes("تانية إعدادي") || g.includes("ثالثة إعدادي") || g.includes("تالتة إعدادي")) return "تانية إعدادي";
+  if (g.includes("تمهيدي")) return "تمهيدي";
+  if (g.includes("أولى ثانوي") || g.includes("اولى ثانوي") || g.includes("أولي ثانوي")) return "أولى ثانوي";
+  if (g.includes("ثانية ثانوي") || g.includes("تانية ثانوي") || g.includes("ثالثة ثانوي") || g.includes("تالتة ثانوي")) return "تانية ثانوي";
+  if (g.includes("خريجين") || g.includes("جامعيين") || g.includes("خدام")) return "خريجين";
+  return g;
+}
+
+export const NAME_TRANSLITERATION_MAP = {
+  "mina": "مينا",
+  "siryani": "سرياني",
+  "soryan": "سريان",
+  "suryan": "سريان",
+  "gabriel": "غبريال",
+  "bishoy": "بيشوي",
+  "beshoy": "بيشوي",
+  "adel": "عادل",
+  "samir": "سمير",
+  "kerolos": "كيرلس",
+  "kirollos": "كيرلس",
+  "kyrollos": "كيرلس",
+  "kyrillos": "كيرلس",
+  "cyril": "كيرلس",
+  "sameh": "سامح",
+  "fayez": "فايز",
+  "marina": "مارينا",
+  "hany": "هاني",
+  "sobhy": "صبحي",
+  "sandra": "ساندرا",
+  "nabil": "نبيل",
+  "kamal": "كمال",
+  "youssef": "يوسف",
+  "joseph": "يوسف",
+  "emil": "إميل",
+  "gerges": "جرجس",
+  "girgis": "جرجس",
+  "george": "جورج",
+  "philopateer": "فيلوباتير",
+  "philopatier": "فيلوباتير",
+  "philopater": "فيلوباتير",
+  "atef": "عاطف",
+  "mounir": "منير",
+  "monir": "منير",
+  "mark": "مارك",
+  "raafat": "رأفت",
+  "faheem": "فهيم",
+  "fahim": "فهيم",
+  "peter": "بيتر",
+  "abanoub": "أبانوب",
+  "michael": "مايكل",
+  "david": "داود",
+  "anton": "أنطون",
+  "anthony": "أنطوني",
+  "thomas": "توماس",
+  "shenouda": "شنودة",
+  "remon": "ريمون",
+  "mario": "ماريو",
+  "john": "جون",
+  "bavly": "بافلي",
+  "martina": "مارتينا",
+  "verena": "فيرينا",
+  "monica": "مونيكا",
+  "mirna": "ميرنا",
+  "myrna": "ميرنا",
+  "justina": "يوستينا",
+  "demiana": "دميانة",
+  "christine": "كريستين",
+  "fady": "فادي",
+  "fadi": "فادي",
+  "magdy": "مجدي",
+  "ashraf": "أشرف",
+  "medhat": "مدحت",
+  "ibrahim": "إبراهيم",
+  "moussa": "موسى",
+  "hanna": "حنا",
+  "nashaat": "نشأت",
+  "tharwat": "ثروت",
+  "morad": "مراد",
+  "saad": "سعد",
+  "nasser": "ناصر",
+  "nassif": "نصيف",
+  "safwat": "صفوت",
+  "nady": "نادي",
+  "wagdy": "وجدي",
+  "nathan": "ناثان"
+};
+
+/**
+ * Transliterates English/Franco names to Arabic if words match known names (e.g. Mina Siryani -> مينا سرياني)
+ */
+export function transliterateEnglishNameToArabic(englishName) {
+  if (!englishName || typeof englishName !== "string") return englishName || "";
+  const trimmed = englishName.trim();
+  if (!trimmed) return "";
+
+  // If already contains Arabic characters, preserve as is
+  if (/[\u0600-\u06FF]/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const words = trimmed.split(/\s+/);
+  const translated = words.map(w => {
+    const cleanKey = w.toLowerCase().replace(/[^a-z]/g, "");
+    return NAME_TRANSLITERATION_MAP[cleanKey] || w;
+  });
+
+  return translated.join(" ");
+}
+
+export function parseStudentQrPayload(rawPayload) {
+  if (!rawPayload) return null;
+  const str = String(rawPayload).trim();
+
+  // 1. JSON Payload: {"studentId": "...", "name": "مينا سرياني", "stage": "..."}
+  if (str.startsWith("{") && str.endsWith("}")) {
+    try {
+      const obj = JSON.parse(str);
+      const rawName = obj.name || obj.studentName || obj.n || "";
+      const rawStage = obj.stage || obj.grade || obj.s || "";
+      const code = obj.studentCode || obj.code || obj.id || obj.c || "";
+      const cleanName = transliterateEnglishNameToArabic(rawName.trim());
+      return {
+        name: cleanName,
+        stage: mapLegacyGradeToStage(rawStage),
+        studentCode: String(code).trim(),
+        qrId: String(obj.qrId || code || str).trim(),
+        phone: String(obj.phone || "").trim()
+      };
+    } catch (e) {}
+  }
+
+  // 2. Delimited text: "مينا سرياني | أولى ثانوي" or "Mina Siryani | 1st Prep"
+  const delimiters = ["|", "#", ";", " - "];
+  for (const d of delimiters) {
+    if (str.includes(d)) {
+      const parts = str.split(d).map(s => s.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        return {
+          name: transliterateEnglishNameToArabic(parts[0]),
+          stage: mapLegacyGradeToStage(parts[1]),
+          studentCode: parts[2] || "",
+          qrId: str
+        };
+      }
+    }
+  }
+
+  // 3. Multi-line or Key-Value format (الاسم: ... \n المرحلة: ...)
+  if (str.includes("\n") || str.includes(":")) {
+    let name = "";
+    let stage = "";
+    let code = "";
+    const lines = str.split("\n");
+    for (const line of lines) {
+      if (line.includes("الاسم") || line.toLowerCase().includes("name")) {
+        name = line.split(/[:=]/)[1]?.trim() || "";
+      } else if (line.includes("المرحلة") || line.includes("الصف") || line.toLowerCase().includes("stage") || line.toLowerCase().includes("grade")) {
+        stage = line.split(/[:=]/)[1]?.trim() || "";
+      } else if (line.includes("كود") || line.toLowerCase().includes("code") || line.toLowerCase().includes("id")) {
+        code = line.split(/[:=]/)[1]?.trim() || "";
+      }
+    }
+    if (name) {
+      return {
+        name: transliterateEnglishNameToArabic(name),
+        stage: mapLegacyGradeToStage(stage),
+        studentCode: code,
+        qrId: str
+      };
+    }
+  }
+
+  // 4. Plain Arabic or English Full Name (e.g. "Mina Siryani" or "مينا سرياني غبريال")
+  const words = str.split(/\s+/).filter(Boolean);
+  const hasDigits = /\d/.test(str);
+  if (!hasDigits && words.length >= 2 && !str.startsWith("STU-")) {
+    return {
+      name: transliterateEnglishNameToArabic(str),
+      stage: "",
+      studentCode: "",
+      qrId: str
+    };
+  }
+
+  // 5. Code or QR ID directly (e.g. STU-1001 or 92841)
+  return {
+    name: "",
+    stage: "",
+    studentCode: str,
+    qrId: str
+  };
+}
+
+/**
+ * Calculates scheduled service occurrences dynamically between any two dates
+ */
+export function calculateServiceOccurrencesInPeriod(startDateIso, endDateIso) {
+  if (!startDateIso || !endDateIso) return {};
+  const start = new Date(startDateIso);
+  const end = new Date(endDateIso);
+  if (start > end) return {};
+
+  const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const counts = {
+    vespers: 0,
+    mass: 0,
+    marathon: 0,
+    tasbeha: 0,
+    lecture1: 0,
+    spiritualNotebook: 0,
+    lecture2: 0,
+    lesson: 0,
+    totalScheduledSessions: 0
+  };
+
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dayIndex = cur.getDay(); // 0 is sunday, 6 is saturday
+    const dayKey = DAY_KEYS[dayIndex];
+    const parts = ATTENDANCE_PARTS[dayKey] || [];
+    for (const p of parts) {
+      counts[p.id] = (counts[p.id] || 0) + 1;
+      counts.totalScheduledSessions++;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return counts;
+}
 
 export const ATTENDANCE_PARTS = {
   saturday: [

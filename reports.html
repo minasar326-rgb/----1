@@ -147,6 +147,114 @@
           </div>
         </div>
 
+        <!-- Stage Group Reports Card (المجموعات الأربعة وحساب مرات الحضور الفعلية) -->
+        <div class="card no-print" style="margin-bottom: 1.5rem; border: 1.5px solid var(--primary-300); background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);">
+          <div class="card-header" style="border-bottom: 1.5px solid var(--border-light); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <div style="background: var(--primary-700); color: white; width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <div>
+                <h2 class="card-title" style="margin: 0; font-size: 1.15rem; color: var(--primary-900);">تقارير المراحل الدراسية والخدمات الفعلية</h2>
+                <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">حساب دقيق لمرات حضور كل خدمة وفقاً للفترة الزمنية المحددة (مثال: التسبيحة 10 / 11)</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-primary" id="stage-load-btn">
+                <i class="fa-solid fa-table-list"></i>
+                <span>عرض التقرير</span>
+              </button>
+              <button class="btn btn-gold" id="stage-export-word-btn">
+                <i class="fa-solid fa-file-word"></i>
+                <span>تصدير تقرير المرحلة (Word)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card-body" style="padding: 1.25rem;">
+            <!-- Controls Grid -->
+            <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.2fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;" class="stage-controls-grid">
+              <div>
+                <label class="form-label" style="font-weight: 700; color: var(--primary-900);">المرحلة أو المجموعة الدراسية</label>
+                <select id="stage-group-select" class="form-control" style="font-weight: 700;">
+                  <option value="group1">المجموعة الأولى (سنة سادسة + أولى إعدادي + تانية إعدادي)</option>
+                  <option value="group2">المجموعة الثانية (تمهيدي)</option>
+                  <option value="group3">المجموعة الثالثة (أولى ثانوي + تانية ثانوي)</option>
+                  <option value="group4">المجموعة الرابعة (خريجين)</option>
+                  <option value="all">كافة المراحل (شامل)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="form-label" style="font-weight: 700; color: var(--primary-900);">من تاريخ</label>
+                <input type="date" id="stage-start-date" class="form-control" />
+              </div>
+
+              <div>
+                <label class="form-label" style="font-weight: 700; color: var(--primary-900);">إلى تاريخ</label>
+                <input type="date" id="stage-end-date" class="form-control" />
+              </div>
+
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-quick-this-month" title="الشهر الحالي">الشهر الحالي</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-quick-30-days" title="آخر 30 يوم">آخر 30 يوم</button>
+              </div>
+            </div>
+
+            <!-- Stage KPI summary row -->
+            <div id="stage-kpi-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+              <div style="background: white; border: 1px solid var(--border-light); border-radius: 8px; padding: 0.65rem 0.85rem; text-align: center;">
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">طلاب المرحلة</span>
+                <strong id="stage-kpi-students" style="font-size: 1.15rem; color: var(--primary-800);">0</strong>
+              </div>
+              <div style="background: white; border: 1px solid var(--border-light); border-radius: 8px; padding: 0.65rem 0.85rem; text-align: center;">
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">الجلسات المجدولة في الفترة</span>
+                <strong id="stage-kpi-scheduled" style="font-size: 1.15rem; color: var(--accent-gold-700);">0</strong>
+              </div>
+              <div style="background: white; border: 1px solid var(--border-light); border-radius: 8px; padding: 0.65rem 0.85rem; text-align: center;">
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">إجمالي حضور الطلاب</span>
+                <strong id="stage-kpi-attended" style="font-size: 1.15rem; color: #059669;">0</strong>
+              </div>
+              <div style="background: white; border: 1px solid var(--border-light); border-radius: 8px; padding: 0.65rem 0.85rem; text-align: center;">
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">نسبة التزام المرحلة</span>
+                <strong id="stage-kpi-rate" style="font-size: 1.15rem; color: var(--primary-600);">0%</strong>
+              </div>
+            </div>
+
+            <!-- Live Stage Table Container -->
+            <div class="table-responsive" style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; background: white;">
+              <table class="data-table" id="stage-report-table" style="font-size: 0.84rem;">
+                <thead id="stage-table-thead">
+                  <tr>
+                    <th style="width: 3%;">م</th>
+                    <th style="width: 10%;">الكود</th>
+                    <th style="width: 16%;">الاسم</th>
+                    <th style="width: 10%;">المرحلة</th>
+                    <th>صلاة العشية</th>
+                    <th>القداس الإلهي</th>
+                    <th>الماراثون</th>
+                    <th>التسبيحة</th>
+                    <th>محاضرة 1</th>
+                    <th>النوتة الروحية</th>
+                    <th>محاضرة 2</th>
+                    <th>درس الخدمة</th>
+                    <th style="width: 7%;">الإجمالي</th>
+                    <th style="width: 5%;">النسبة</th>
+                    <th style="width: 6%;">مختصر</th>
+                  </tr>
+                </thead>
+                <tbody id="stage-table-tbody">
+                  <tr>
+                    <td colspan="15" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                      اضغط على "عرض التقرير" لاستعراض مصفوفة حضور المرحلة المحددة
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- Dedicated Single Student Word Exporter Card -->
         <div class="card custom-student-export-card no-print">
           <div class="card-body" style="padding: 1.25rem;">
@@ -157,12 +265,12 @@
                 </div>
                 <div>
                   <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--primary-900);">تصدير تقرير مخصص لطالب مفرد (Word)</h3>
-                  <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">اختر الطالب والفترة الزمنية والأيام المطلوبة، ثم قم بالتصدير مباشرة</p>
+                  <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">اختر الطالب والفترة الزمنية، ثم قم بتصدير تقرير تفصيلي أو مختصر مباشرة</p>
                 </div>
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.2fr auto; gap: 1rem; align-items: end;" class="student-export-grid">
+            <div style="display: grid; grid-template-columns: 2fr 1.1fr 1.1fr auto auto; gap: 0.75rem; align-items: end;" class="student-export-grid">
               <div class="input-with-icon" style="position: relative;">
                 <input type="text" id="single-student-search" class="form-control" placeholder="ابحث باسم الطالب أو الكود لتصدير تقريره..." autocomplete="off">
                 <i class="fa-solid fa-magnifying-glass input-icon"></i>
@@ -188,7 +296,12 @@
 
               <button type="button" class="btn btn-primary" id="btn-export-single-student" style="white-space: nowrap;">
                 <i class="fa-solid fa-file-word"></i>
-                <span>تصدير تقرير الطالب (Word)</span>
+                <span>تقرير تفصيلي (Word)</span>
+              </button>
+
+              <button type="button" class="btn btn-gold" id="btn-export-single-brief" style="white-space: nowrap;">
+                <i class="fa-solid fa-file-lines"></i>
+                <span>تقرير مختصر (Word)</span>
               </button>
             </div>
 
@@ -358,8 +471,17 @@
   <script type="module">
     import "./js/app.js";
     import { getWeeklyAttendanceMatrix } from "./js/attendance.js";
-    import { exportWeeklyMatrixWordReport, exportAllStudentsWordReport, exportStudentWordReport } from "./js/reports.js";
-    import { GRADES, getPastWeeks, getCurrentWeekId, showToast } from "./js/utils.js";
+    import { 
+      exportWeeklyMatrixWordReport, 
+      exportAllStudentsWordReport, 
+      exportStudentWordReport,
+      calculateStageGroupReportData,
+      exportStageGroupWordReport,
+      calculateSingleStudentBriefReport,
+      exportSingleStudentBriefWordReport,
+      REPORT_SERVICES
+    } from "./js/reports.js";
+    import { GRADES, STAGES, STAGE_GROUPS, getPastWeeks, getCurrentWeekId, getActualDayDate, showToast, formatDateArabic } from "./js/utils.js";
     import { initStudentAutocomplete } from "./js/autocomplete.js";
     import { getAllStudents } from "./js/students.js";
 
@@ -523,6 +645,7 @@
       return Array.from(document.querySelectorAll("#report-day-picker input:checked")).map(el => el.value);
     }
 
+    // Single Student Detailed Report Export
     document.getElementById("btn-export-single-student").addEventListener("click", async () => {
       const studentId = document.getElementById("selected-student-id-export").value;
       const searchVal = document.getElementById("single-student-search").value.trim();
@@ -559,6 +682,43 @@
       await exportStudentWordReport(targetStudentId, reportOptions.weekId || null, reportOptions);
     });
 
+    // Single Student Brief Report Export (اسم الطالب، مرحلته، والخدمات وعدد مرات حضوره فقط)
+    document.getElementById("btn-export-single-brief").addEventListener("click", async () => {
+      const studentId = document.getElementById("selected-student-id-export").value;
+      const searchVal = document.getElementById("single-student-search").value.trim();
+
+      if (!studentId && !searchVal) {
+        showToast("يرجى اختيار طالب أولاً لتصدير تقريره", "warning");
+        return;
+      }
+
+      let targetStudentId = studentId;
+      if (!targetStudentId) {
+        const allStudents = await getAllStudents();
+        const found = allStudents.find(s => s.name.includes(searchVal) || (s.studentCode && s.studentCode.includes(searchVal)));
+        if (found) targetStudentId = found.studentId;
+      }
+
+      if (!targetStudentId) {
+        showToast("لم يتم العثور على الطالب المحدد", "error");
+        return;
+      }
+
+      const mode = reportRangeMode.value;
+      let startDate = mode === "custom" ? reportStartDate.value : null;
+      let endDate = mode === "custom" ? reportEndDate.value : null;
+
+      if (mode === "week" && singleStudentWeekFilter.value) {
+        const sat = getActualDayDate(singleStudentWeekFilter.value, "saturday");
+        const fri = getActualDayDate(singleStudentWeekFilter.value, "friday");
+        startDate = sat.dateIso;
+        endDate = fri.dateIso;
+      }
+
+      showToast("جاري تجهيز وتصدير التقرير المختصر للطالب إلى Word...", "info");
+      await exportSingleStudentBriefWordReport(targetStudentId, startDate, endDate);
+    });
+
     // Week selector change
     weekSelect.addEventListener("change", loadWeekMatrix);
 
@@ -584,10 +744,170 @@
       await exportAllStudentsWordReport();
     });
 
-    window.addEventListener('church_attendance_updated', () => loadWeekMatrix());
-    window.addEventListener('church_students_updated', () => loadWeekMatrix());
+    /* ==========================================================================
+       Stage Group Reports Logic & Dynamic Service Occurrence Calculations
+       ========================================================================== */
+
+    const stageGroupSelect = document.getElementById("stage-group-select");
+    const stageStartDate = document.getElementById("stage-start-date");
+    const stageEndDate = document.getElementById("stage-end-date");
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+
+    if (stageStartDate && stageEndDate) {
+      stageStartDate.value = monthStartStr;
+      stageEndDate.value = todayStr;
+    }
+
+    document.getElementById("btn-quick-this-month")?.addEventListener("click", () => {
+      stageStartDate.value = monthStartStr;
+      stageEndDate.value = todayStr;
+      loadStageGroupReport();
+    });
+
+    document.getElementById("btn-quick-30-days")?.addEventListener("click", () => {
+      const d30 = new Date();
+      d30.setDate(d30.getDate() - 30);
+      stageStartDate.value = d30.toISOString().split("T")[0];
+      stageEndDate.value = todayStr;
+      loadStageGroupReport();
+    });
+
+    async function loadStageGroupReport() {
+      const groupId = stageGroupSelect.value;
+      const startDate = stageStartDate.value;
+      const endDate = stageEndDate.value;
+      const tbody = document.getElementById("stage-table-tbody");
+      const thead = document.getElementById("stage-table-thead");
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="15" style="text-align: center; padding: 2.5rem;">
+            <div class="spinner spinner-primary" style="margin: 0 auto;"></div>
+          </td>
+        </tr>
+      `;
+
+      try {
+        const reportData = await calculateStageGroupReportData(groupId, startDate, endDate);
+        const { services, students, stats } = reportData;
+
+        // Update KPIs
+        document.getElementById("stage-kpi-students").textContent = stats.totalStudents;
+        document.getElementById("stage-kpi-scheduled").textContent = stats.totalScheduledPerStudent;
+        document.getElementById("stage-kpi-attended").textContent = stats.totalAttendedAll;
+        document.getElementById("stage-kpi-rate").textContent = `${stats.groupRate}%`;
+
+        // Update table header with dynamic service occurrence count
+        thead.innerHTML = `
+          <tr>
+            <th style="width: 3%;">م</th>
+            <th style="width: 10%;">الكود</th>
+            <th style="width: 16%;">الاسم</th>
+            <th style="width: 10%;">المرحلة</th>
+            ${services.map(s => `
+              <th style="text-align: center;">
+                ${s.shortName || s.name}<br>
+                <small style="color: #fbbf24; font-size: 0.75rem;">(${s.scheduledCount})</small>
+              </th>
+            `).join("")}
+            <th style="width: 7%; text-align: center;">الإجمالي</th>
+            <th style="width: 5%; text-align: center;">النسبة</th>
+            <th style="width: 6%; text-align: center;">مختصر</th>
+          </tr>
+        `;
+
+        if (students.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="${services.length + 6}">
+                <div class="empty-state">
+                  <i class="fa-solid fa-user-slash empty-state-icon"></i>
+                  <h3 class="empty-state-title">لا يوجد طلاب مسجلون في هذه المرحلة</h3>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = students.map((s, idx) => {
+          const rateColor = s.overallRate >= 75 ? "badge-present" : (s.overallRate >= 50 ? "badge-gold" : "badge-absent");
+
+          const serviceCells = services.map(svc => {
+            const sData = s.services[svc.id];
+            const attended = sData?.attendedCount || 0;
+            const scheduled = svc.scheduledCount || 0;
+            if (scheduled === 0) return `<td style="text-align: center; color: #94a3b8;">—</td>`;
+            const badgeClass = attended > 0 ? "badge-present" : "badge-absent";
+            return `
+              <td style="text-align: center;">
+                <span class="badge ${badgeClass}" style="font-size: 0.78rem;">
+                  ${attended} / ${scheduled}
+                </span>
+              </td>
+            `;
+          }).join("");
+
+          return `
+            <tr>
+              <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+              <td><strong style="color: var(--primary-700); font-family: monospace;">${s.studentCode}</strong></td>
+              <td>
+                <a href="student.html?id=${s.studentId}" style="font-weight: 700; color: var(--primary-600);">
+                  ${s.name}
+                </a>
+              </td>
+              <td><span class="badge badge-none">${s.stage}</span></td>
+              ${serviceCells}
+              <td style="text-align: center; font-weight: bold; color: var(--primary-700);">${s.totalAttended} / ${s.totalScheduled}</td>
+              <td style="text-align: center;"><span class="badge ${rateColor}">${s.overallRate}%</span></td>
+              <td style="text-align: center;">
+                <button type="button" class="btn btn-outline btn-sm btn-brief-student-row" data-id="${s.studentId}" title="تحميل تقرير مختصر Word">
+                  <i class="fa-solid fa-file-word text-gold"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        // Attach listeners for row brief export buttons
+        document.querySelectorAll(".btn-brief-student-row").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const stuId = btn.getAttribute("data-id");
+            showToast("جاري تصدير التقرير المختصر للطالب...", "info");
+            await exportSingleStudentBriefWordReport(stuId, startDate, endDate);
+          });
+        });
+
+      } catch (err) {
+        console.error("Error loading stage report:", err);
+        showToast("حدث خطأ أثناء تحميل تقرير المرحلة", "error");
+      }
+    }
+
+    document.getElementById("stage-load-btn").addEventListener("click", loadStageGroupReport);
+
+    document.getElementById("stage-export-word-btn").addEventListener("click", async () => {
+      const groupId = stageGroupSelect.value;
+      const startDate = stageStartDate.value;
+      const endDate = stageEndDate.value;
+      showToast("جاري تصدير تقرير المرحلة إلى مستند Word...", "info");
+      await exportStageGroupWordReport(groupId, startDate, endDate);
+    });
+
+    window.addEventListener('church_attendance_updated', () => {
+      loadWeekMatrix();
+      loadStageGroupReport();
+    });
+    window.addEventListener('church_students_updated', () => {
+      loadWeekMatrix();
+      loadStageGroupReport();
+    });
 
     loadWeekMatrix();
+    loadStageGroupReport();
   </script>
 </body>
 </html>

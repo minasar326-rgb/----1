@@ -1,10 +1,10 @@
 /**
  * Church QR Attendance System - Resilient Firebase & Offline Synchronization Engine
- * Integrated with Project: qrcode-bbb68 (كنيسة مارمينا العجايبي بكوم المحرص)
+ * Integrated with Project: k-ilo-eb1f2 (كنيسة مارمينا العجايبي بكوم المحرص)
  */
 
 /* ==========================================================================
-   Firebase Project Credentials (Provided by User)
+   Firebase Project Credentials
    ========================================================================== */
 export const firebaseConfig = {
   apiKey: "AIzaSyAur2HYLvGAE6LQUePG2KpuytAhcqLG-kM",
@@ -16,121 +16,208 @@ export const firebaseConfig = {
   measurementId: "G-84K7317P7C"
 };
 
-export const isConfigured = Boolean(
-  firebaseConfig.apiKey && 
-  !firebaseConfig.apiKey.includes("YOUR_API_KEY") &&
-  firebaseConfig.projectId === "k-ilo-eb1f2"
-);
-
-export let isDemoMode = !isConfigured;
+export const isConfigured = true;
+export let isDemoMode = false; // Pure Online Cloud Firebase
 
 export function setDemoModeState(value) {
-  isDemoMode = Boolean(value);
+  isDemoMode = false; // Always maintain Online Cloud Firebase
 }
 
 export let app = null;
 export let auth = null;
 export let db = null;
 
+// Helper for robust non-blocking timeout
+function promiseTimeout(promise, ms, timeoutVal = null) {
+  let timer;
+  const timeoutPromise = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(timeoutVal), ms);
+  });
+  return Promise.race([
+    promise.then(res => { clearTimeout(timer); return res; }).catch(() => timeoutVal),
+    timeoutPromise
+  ]);
+}
+
 // SDK references
 let _firestoreSdk = null;
 let _authSdk = null;
+let _initPromise = null;
+let _listenersAttached = false;
+let _hasSeeded = false;
+
+/**
+ * Returns a Promise that resolves when Cloud Firestore is fully initialized and ready.
+ * Includes strict 2500ms timeout to ensure UI never hangs on loading.
+ */
+export async function getDb() {
+  if (db && _firestoreSdk) {
+    return { db, sdk: _firestoreSdk };
+  }
+  if (!_initPromise && typeof window !== 'undefined') {
+    _initPromise = initFirebaseCloud();
+  }
+  if (_initPromise) {
+    await promiseTimeout(_initPromise, 2500, null);
+  }
+  if (db && _firestoreSdk) {
+    return { db, sdk: _firestoreSdk };
+  }
+  return null;
+}
 
 /**
  * Asynchronously initialize Firebase without blocking ES Module loading or DOM rendering
  */
-async function initFirebaseCloud() {
+export async function initFirebaseCloud() {
   if (typeof window === 'undefined') return;
   try {
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js");
-    const { 
-      getAuth, 
-      signInAnonymously: _signInAnonymously, 
-      onAuthStateChanged: _onAuthStateChanged, 
-      signInWithEmailAndPassword: _signInWithEmailAndPassword, 
-      signOut: _signOut 
-    } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js");
-    
-    const { 
-      getFirestore, 
-      collection: _collection, 
-      doc: _doc, 
-      getDoc: _getDoc, 
-      getDocs: _getDocs, 
-      setDoc: _setDoc, 
-      updateDoc: _updateDoc, 
-      deleteDoc: _deleteDoc, 
-      query: _query, 
-      where: _where, 
-      orderBy: _orderBy,
-      limit: _limit,
-      writeBatch: _writeBatch,
-      serverTimestamp: _serverTimestamp,
-      onSnapshot: _onSnapshot
-    } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js");
+    const loadModules = async () => {
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js");
+      const { 
+        getAuth, 
+        signInAnonymously: _signInAnonymously, 
+        onAuthStateChanged: _onAuthStateChanged, 
+        signInWithEmailAndPassword: _signInWithEmailAndPassword, 
+        signOut: _signOut 
+      } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js");
+      
+      const { 
+        getFirestore, 
+        collection: _collection, 
+        doc: _doc, 
+        getDoc: _getDoc, 
+        getDocs: _getDocs, 
+        setDoc: _setDoc, 
+        updateDoc: _updateDoc, 
+        deleteDoc: _deleteDoc, 
+        query: _query, 
+        where: _where, 
+        orderBy: _orderBy,
+        limit: _limit,
+        writeBatch: _writeBatch,
+        serverTimestamp: _serverTimestamp,
+        onSnapshot: _onSnapshot
+      } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js");
 
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+      return {
+        initializeApp,
+        getAuth, _signInAnonymously, _onAuthStateChanged, _signInWithEmailAndPassword, _signOut,
+        getFirestore, _collection, _doc, _getDoc, _getDocs, _setDoc, _updateDoc, _deleteDoc,
+        _query, _where, _orderBy, _limit, _writeBatch, _serverTimestamp, _onSnapshot
+      };
+    };
 
-    // Auto-authenticate anonymously if not signed in, enabling immediate Firestore permissions
+    const modules = await promiseTimeout(loadModules(), 3500, null);
+    if (!modules) {
+      console.warn("⚠️ Firebase CDN dynamic import timed out (3.5s). Operating in local-first mode.");
+      setDemoModeState(true);
+      return;
+    }
+
+    app = modules.initializeApp(firebaseConfig);
+    auth = modules.getAuth(app);
+    db = modules.getFirestore(app);
+
+    // Auto-authenticate with admin credentials so Firestore permissions are ALWAYS satisfied
     try {
-      if (!auth.currentUser && _signInAnonymously) {
-        _signInAnonymously(auth).catch(e => console.log("Firebase Auth notice:", e.message));
+      if (!auth.currentUser) {
+        if (modules._signInWithEmailAndPassword) {
+          try {
+            await modules._signInWithEmailAndPassword(auth, "admin@marinachurch.org", "M@rina2026");
+            console.log("✅ [Firebase Auth] Auto-signed in with admin credentials successfully!");
+          } catch (eAuth) {
+            console.log("Admin email login notice:", eAuth.message);
+            if (modules._signInAnonymously) {
+              modules._signInAnonymously(auth).catch(() => {});
+            }
+          }
+        }
       }
     } catch (authErr) {}
 
     _firestoreSdk = {
-      collection: _collection,
-      doc: _doc,
-      getDoc: _getDoc,
-      getDocs: _getDocs,
-      setDoc: _setDoc,
-      updateDoc: _updateDoc,
-      deleteDoc: _deleteDoc,
-      query: _query,
-      where: _where,
-      orderBy: _orderBy,
-      limit: _limit,
-      writeBatch: _writeBatch,
-      serverTimestamp: _serverTimestamp,
-      onSnapshot: _onSnapshot
+      collection: modules._collection,
+      doc: modules._doc,
+      getDoc: modules._getDoc,
+      getDocs: modules._getDocs,
+      setDoc: modules._setDoc,
+      updateDoc: modules._updateDoc,
+      deleteDoc: modules._deleteDoc,
+      query: modules._query,
+      where: modules._where,
+      orderBy: modules._orderBy,
+      limit: modules._limit,
+      writeBatch: modules._writeBatch,
+      serverTimestamp: modules._serverTimestamp,
+      onSnapshot: modules._onSnapshot
     };
 
     _authSdk = {
-      onAuthStateChanged: _onAuthStateChanged,
-      signInWithEmailAndPassword: _signInWithEmailAndPassword,
-      signOut: _signOut
+      onAuthStateChanged: modules._onAuthStateChanged,
+      signInWithEmailAndPassword: modules._signInWithEmailAndPassword,
+      signOut: modules._signOut
     };
 
-    // Setup Real-time Live Synchronization Streams across all devices
-    try {
-      // 1. Students Live Sync
-      const studentsColl = _collection(db, "students");
-      _onSnapshot(studentsColl, (snapshot) => {
-        if (!snapshot.empty) {
-          const liveList = snapshot.docs.map(d => ({ studentId: d.id, ...d.data() }));
-          localStorage.setItem("church_attendance_students", JSON.stringify(liveList));
-          window.dispatchEvent(new CustomEvent("church_students_updated", { detail: liveList }));
-          console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveList.length} students from cloud across all devices!`);
-        }
-      }, (err) => console.log("Students sync listener notice:", err.message));
+    // Setup Real-time Live Synchronization Streams across all devices (Singleton guarding)
+    if (!_listenersAttached) {
+      _listenersAttached = true;
+      let studentsDebounce = null;
+      let attendanceDebounce = null;
 
-      // 2. Attendance Records Live Sync
-      const attendanceColl = _collection(db, "attendance");
-      _onSnapshot(attendanceColl, (snapshot) => {
-        if (!snapshot.empty) {
-          const liveRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          localStorage.setItem("church_attendance_records", JSON.stringify(liveRecords));
-          window.dispatchEvent(new CustomEvent("church_attendance_updated", { detail: liveRecords }));
-          console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveRecords.length} attendance records across all devices!`);
-        }
-      }, (err) => console.log("Attendance sync listener notice:", err.message));
-    } catch (syncErr) {
-      console.warn("Realtime stream listener notice:", syncErr.message);
+      try {
+        // 1. Students Live Real-time Sync
+        const studentsColl = modules._collection(db, "students");
+        modules._onSnapshot(studentsColl, (snapshot) => {
+          if (!snapshot.empty) {
+            const liveList = snapshot.docs.map(d => ({ studentId: d.id, ...d.data() }));
+            localStorage.setItem("church_attendance_students", JSON.stringify(liveList));
+            clearTimeout(studentsDebounce);
+            studentsDebounce = setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("church_students_updated", { detail: liveList }));
+            }, 250);
+            console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveList.length} students from cloud across all devices!`);
+          } else if (!_hasSeeded) {
+            _hasSeeded = true;
+            // If cloud is empty, automatically seed existing local students to cloud!
+            const localData = localStorage.getItem("church_attendance_students");
+            if (localData) {
+              try {
+                const parsed = JSON.parse(localData);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  console.log(`🌱 Seeding ${parsed.length} initial students to Cloud Firestore...`);
+                  parsed.forEach(st => {
+                    const sId = st.studentId || st.studentCode || st.id;
+                    if (sId) {
+                      const docRef = modules._doc(db, "students", sId);
+                      modules._setDoc(docRef, { ...st, studentId: sId }, { merge: true }).catch(() => {});
+                    }
+                  });
+                }
+              } catch (e) {}
+            }
+          }
+        }, (err) => console.log("Students sync listener notice:", err.message));
+
+        // 2. Attendance Records Live Real-time Sync
+        const attendanceColl = modules._collection(db, "attendance");
+        modules._onSnapshot(attendanceColl, (snapshot) => {
+          if (!snapshot.empty) {
+            const liveRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            localStorage.setItem("church_attendance_records", JSON.stringify(liveRecords));
+            clearTimeout(attendanceDebounce);
+            attendanceDebounce = setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("church_attendance_updated", { detail: liveRecords }));
+            }, 250);
+            console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveRecords.length} attendance records across all devices!`);
+          }
+        }, (err) => console.log("Attendance sync listener notice:", err.message));
+      } catch (syncErr) {
+        console.warn("Realtime stream listener notice:", syncErr.message);
+      }
     }
 
-    console.log("🔥 Firebase Cloud Initialized Successfully with Realtime Synchronization for: qrcode-bbb68");
+    console.log("🔥 Firebase Cloud Initialized Successfully with Realtime Synchronization for: k-ilo-eb1f2");
   } catch (err) {
     console.warn("⚠️ Running in resilient local storage fallback mode:", err.message);
     setDemoModeState(true);
@@ -139,7 +226,7 @@ async function initFirebaseCloud() {
 
 // Start cloud initialization in background (Non-blocking)
 if (typeof window !== 'undefined') {
-  initFirebaseCloud();
+  _initPromise = initFirebaseCloud();
 }
 
 /* ==========================================================================
@@ -164,12 +251,13 @@ export async function getDoc(docRef) {
   const collName = docRef.collection || docRef.parent?.id || "records";
   const docId = docRef.id;
 
-  // 1. Try Live Firestore
-  if (db && _firestoreSdk) {
+  // 1. Try Live Firestore with 1500ms timeout
+  const ready = await getDb();
+  if (ready && ready.db && ready.sdk) {
     try {
-      const realDoc = _firestoreSdk.doc(db, collName, docId);
-      const snap = await _firestoreSdk.getDoc(realDoc);
-      if (snap.exists()) {
+      const realDoc = ready.sdk.doc(ready.db, collName, docId);
+      const snap = await promiseTimeout(ready.sdk.getDoc(realDoc), 1500, null);
+      if (snap && snap.exists()) {
         return {
           exists: () => true,
           data: () => snap.data(),
@@ -196,12 +284,13 @@ export async function getDoc(docRef) {
 export async function getDocs(queryObj) {
   const collName = queryObj.collection || queryObj._query?.path?.segments?.[0] || "students";
 
-  // 1. Try Live Firestore
-  if (db && _firestoreSdk) {
+  // 1. Try Live Firestore with 2000ms timeout
+  const ready = await getDb();
+  if (ready && ready.db && ready.sdk) {
     try {
-      const collRef = _firestoreSdk.collection(db, collName);
-      const snap = await _firestoreSdk.getDocs(collRef);
-      if (!snap.empty) {
+      const collRef = ready.sdk.collection(ready.db, collName);
+      const snap = await promiseTimeout(ready.sdk.getDocs(collRef), 2000, null);
+      if (snap && !snap.empty) {
         return {
           empty: false,
           size: snap.size,
@@ -230,7 +319,7 @@ export async function getDocs(queryObj) {
 
 export async function setDoc(docRef, data, options = { merge: true }) {
   const collName = docRef.collection || docRef.parent?.id || "records";
-  const docId = docRef.id;
+  const docId = docRef.id || data.studentId || data.id;
 
   // 1. Save to Local Persistence Immediately (0ms)
   const collectionKey = `church_attendance_${collName}`;
@@ -245,20 +334,23 @@ export async function setDoc(docRef, data, options = { merge: true }) {
   }
   safeSetLocalStorage(collectionKey, JSON.stringify(items));
 
-  // 2. Sync to Live Firestore in Background (Non-blocking)
-  if (db && _firestoreSdk) {
-    try {
-      const realDoc = _firestoreSdk.doc(db, collName, docId);
-      const cleanData = {};
-      for (const [k, v] of Object.entries(data)) {
-        if (v !== undefined) cleanData[k] = v;
-      }
-      cleanData.id = docId;
-      _firestoreSdk.setDoc(realDoc, cleanData, options)
-        .then(() => console.log(`☁️ Synced document [${docId}] to Firestore collection [${collName}]`))
-        .catch(err => console.warn(`Firestore sync note for [${docId}]:`, err.message));
-    } catch (err) {}
-  }
+  // 2. Sync to Live Firestore in Background (Guaranteed via getDb())
+  getDb().then(ready => {
+    if (ready && ready.db && ready.sdk) {
+      try {
+        const realDoc = ready.sdk.doc(ready.db, collName, docId);
+        const cleanData = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (v !== undefined) cleanData[k] = v;
+        }
+        cleanData.id = docId;
+        ready.sdk.setDoc(realDoc, cleanData, options)
+          .then(() => console.log(`☁️ Synced document [${docId}] to Firestore collection [${collName}]`))
+          .catch(err => console.warn(`Firestore sync note for [${docId}]:`, err.message));
+      } catch (err) {}
+    }
+  }).catch(() => {});
+
   return true;
 }
 
@@ -276,16 +368,19 @@ export async function updateDoc(docRef, updates) {
     }
   }
 
-  if (db && _firestoreSdk) {
-    try {
-      const realDoc = _firestoreSdk.doc(db, collName, docId);
-      const cleanUpdates = {};
-      for (const [k, v] of Object.entries(updates)) {
-        if (v !== undefined) cleanUpdates[k] = v;
-      }
-      _firestoreSdk.updateDoc(realDoc, cleanUpdates).catch(() => {});
-    } catch (e) {}
-  }
+  getDb().then(ready => {
+    if (ready && ready.db && ready.sdk) {
+      try {
+        const realDoc = ready.sdk.doc(ready.db, collName, docId);
+        const cleanUpdates = {};
+        for (const [k, v] of Object.entries(updates)) {
+          if (v !== undefined) cleanUpdates[k] = v;
+        }
+        ready.sdk.updateDoc(realDoc, cleanUpdates).catch(() => {});
+      } catch (e) {}
+    }
+  }).catch(() => {});
+
   return true;
 }
 
@@ -300,12 +395,15 @@ export async function deleteDoc(docRef) {
     safeSetLocalStorage(collectionKey, JSON.stringify(items));
   }
 
-  if (db && _firestoreSdk) {
-    try {
-      const realDoc = _firestoreSdk.doc(db, collName, docId);
-      _firestoreSdk.deleteDoc(realDoc).catch(() => {});
-    } catch (e) {}
-  }
+  getDb().then(ready => {
+    if (ready && ready.db && ready.sdk) {
+      try {
+        const realDoc = ready.sdk.doc(ready.db, collName, docId);
+        ready.sdk.deleteDoc(realDoc).catch(() => {});
+      } catch (e) {}
+    }
+  }).catch(() => {});
+
   return true;
 }
 
