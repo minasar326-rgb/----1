@@ -88,19 +88,31 @@ export async function initScanner(elementId, onSuccess, onError) {
     return;
   }
 
+  // Look for pre-existing static video element or create one dynamically
+  let videoEl = document.getElementById(`${elementId}-live-video`);
+  if (!videoEl && container.parentElement) {
+    videoEl = container.parentElement.querySelector("video");
+  }
+
   try {
-    // 1. Try Native BarcodeDetector Engine if supported
+    // 1. Try Native BarcodeDetector Engine if supported (must support qr_code)
     let nativeStarted = false;
     if ("BarcodeDetector" in window && typeof BarcodeDetector.getSupportedFormats === "function") {
       try {
         const supported = await BarcodeDetector.getSupportedFormats();
-        if (Array.isArray(supported) && (supported.includes("qr_code") || supported.includes("code_128") || supported.length > 0)) {
+        if (Array.isArray(supported) && supported.includes("qr_code")) {
           console.log("🚀 [Scanner] Initializing Native BarcodeDetector Engine with formats:", supported);
           nativeMediaStream = await requestUniversalCameraStream(currentFacingMode);
 
-          container.innerHTML = "";
-          const videoEl = document.createElement("video");
-          videoEl.id = `${elementId}-live-video`;
+          if (!videoEl) {
+            container.innerHTML = "";
+            videoEl = document.createElement("video");
+            videoEl.id = `${elementId}-live-video`;
+            container.appendChild(videoEl);
+          }
+
+          videoEl.style.display = "block";
+          container.style.display = "none";
           videoEl.autoplay = true;
           videoEl.muted = true;
           videoEl.playsInline = true;
@@ -110,7 +122,6 @@ export async function initScanner(elementId, onSuccess, onError) {
           videoEl.style.height = "100%";
           videoEl.style.objectFit = "cover";
 
-          container.appendChild(videoEl);
           videoEl.srcObject = nativeMediaStream;
           await videoEl.play();
 
@@ -149,6 +160,9 @@ export async function initScanner(elementId, onSuccess, onError) {
 
     // 2. Fallback: Html5Qrcode Engine (iOS Safari / Standard Web)
     console.log("ℹ️ [Scanner] Starting Html5Qrcode engine...");
+    if (videoEl) videoEl.style.display = "none";
+    container.style.display = "block";
+
     if (typeof Html5Qrcode === "undefined") {
       await loadQrLibrary();
     }

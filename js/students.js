@@ -280,38 +280,82 @@ export async function isQrCodeAvailable(qrId, excludeStudentId = null) {
 }
 
 /**
- * Smart Search with Autocomplete suggestions
+ * Normalize Arabic text: removes diacritics, unifies alef, taa marbouta, and yaa
  */
-export async function searchStudents(queryText, maxResults = 8) {
+export function normalizeArabic(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(/[\u064B-\u065F\u0640]/g, "") // remove tashkeel & tatweel
+    .replace(/[أإآآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/[ىي]/g, "ي")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Smart Search with Autocomplete suggestions (Matches on the first character typed)
+ */
+export async function searchStudents(queryText, maxResults = 25) {
   if (!queryText || !queryText.trim()) return [];
-  const clean = sanitizeInput(queryText).trim().toLowerCase();
-  const all = getDemoStudents();
+  const rawQuery = String(queryText).trim();
+  const cleanQuery = normalizeArabic(rawQuery);
+  const cleanRawLower = rawQuery.toLowerCase();
+
+  let all = getDemoStudents();
+  if (!all || all.length === 0) {
+    all = await getAllStudents();
+  }
 
   const matches = [];
   for (const s of all) {
-    const name = (s.name || "").toLowerCase();
-    const code = (s.studentCode || s.studentId || "").toLowerCase();
-    const qr = (s.qrId || "").toLowerCase();
-    const phone = (s.phone || "").toLowerCase();
+    const rawName = s.name || "";
+    const normName = normalizeArabic(rawName);
+    const code = String(s.studentCode || s.studentId || "").toLowerCase();
+    const qr = String(s.qrId || "").toLowerCase();
+    const phone = String(s.phone || "").replace(/\s+/g, "");
 
     let score = 0;
-    if (name.startsWith(clean)) score += 100;
-    else if (name.includes(clean)) score += 50;
+    const words = normName.split(/\s+/).filter(Boolean);
 
-    if (code === clean) score += 90;
-    else if (code.includes(clean)) score += 40;
+    // 1. First word starts with search query (e.g. "م" matches "مينا")
+    if (words.length > 0 && words[0].startsWith(cleanQuery)) {
+      score += 200;
+    }
+    // 2. Any subsequent word starts with query (e.g. "س" matches "مينا سورياني")
+    else if (words.slice(1).some(w => w.startsWith(cleanQuery))) {
+      score += 150;
+    }
+    // 3. Name contains query anywhere
+    else if (normName.includes(cleanQuery)) {
+      score += 80;
+    }
 
-    if (qr === clean) score += 90;
-    else if (qr.includes(clean)) score += 30;
+    // 4. Student code matches
+    if (code === cleanRawLower) score += 180;
+    else if (code.startsWith(cleanRawLower)) score += 130;
+    else if (code.includes(cleanRawLower)) score += 60;
 
-    if (phone.includes(clean)) score += 20;
+    // 5. QR ID matches
+    if (qr === cleanRawLower) score += 170;
+    else if (qr.includes(cleanRawLower)) score += 50;
+
+    // 6. Phone matches
+    if (phone && (phone.startsWith(rawQuery) || phone.includes(rawQuery))) {
+      score += 40;
+    }
 
     if (score > 0) {
       matches.push({ student: s, score });
     }
   }
 
-  matches.sort((a, b) => b.score - a.score);
+  // Sort highest score first, then alphabetically
+  matches.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.student.name || "").localeCompare(b.student.name || "", "ar");
+  });
+
   return matches.slice(0, maxResults).map(m => m.student);
 }
 

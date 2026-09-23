@@ -255,6 +255,7 @@
             </div>
             <div class="card-body" style="padding: 1.25rem;">
               <div class="camera-box" style="height: 330px; position: relative; overflow: hidden; background: #000; border-radius: var(--radius-lg);">
+                <video id="attendance-qr-reader-live-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
                 <div id="attendance-qr-reader" style="position: absolute; inset: 0; width: 100%; height: 100%;"></div>
                 <div class="scanner-overlay" id="scanner-laser-overlay" style="display: none; pointer-events: none;">
                   <div class="scanner-target-box">
@@ -266,8 +267,8 @@
                   <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; margin-bottom: 0.85rem; box-shadow: 0 0 25px rgba(99, 102, 241, 0.6); color: white; font-size: 1.6rem;">
                     <i class="fa-solid fa-camera"></i>
                   </div>
-                  <div style="font-weight: 800; font-size: 1.1rem; color: #fff; margin-bottom: 0.35rem;">اضغط هنا لتشغيل الكاميرا المباشرة</div>
-                  <div style="font-size: 0.82rem; color: #94a3b8;">لتسجيل حضور الطلاب عبر مسح كارنيه الـ QR مباشرة</div>
+                  <div style="font-weight: 800; font-size: 1.15rem; color: #fff; margin-bottom: 0.35rem;">اضغط هنا لتشغيل الكاميرا المباشرة 📷</div>
+                  <div style="font-size: 0.85rem; color: #cbd5e1;">لتسجيل حضور الطلاب عبر مسح كارنيه الـ QR مباشرة</div>
                 </div>
               </div>
 
@@ -463,11 +464,15 @@
     import { ATTENDANCE_PARTS, ALL_DAYS, getCurrentWeekId, getWeekDetails, getPastWeeks, getActualDayDate, showToast, playErrorBeep, playSuccessBeep, STAGES, parseStudentQrPayload, mapLegacyGradeToStage } from "./js/utils.js";
     import { initStudentAutocomplete } from "./js/autocomplete.js";
 
-    let currentDay = "saturday";
+    // Auto-detect Day: Current actual weekday (0=Sun, 1=Mon, ..., 6=Sat)
+    const dayMap = { 0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday" };
+    const realTodayDay = dayMap[new Date().getDay()] || "saturday";
+
+    let currentDay = realTodayDay; // Defaults automatically to today!
     let activeStudent = null;
     let currentWeekId = getCurrentWeekId();
     let sessionScans = [];
-    let isCameraRunning = true;
+    let isCameraRunning = false;
 
     // Quick Register Modal Elements
     const quickModal = document.getElementById("quick-register-modal");
@@ -531,16 +536,13 @@
       }
     });
 
-    // Detect Day from URL or current actual day of week
+    // Check if a specific day was provided in URL parameter ?day=
     const urlParams = new URLSearchParams(window.location.search);
     const dayParam = urlParams.get("day");
     if (dayParam && ALL_DAYS.some(d => d.id === dayParam)) {
       currentDay = dayParam;
     } else {
-      // Map current JS weekday (0=Sun, 1=Mon, ..., 6=Sat)
-      const dayMap = { 0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday" };
-      const todayDay = dayMap[new Date().getDay()];
-      if (todayDay) currentDay = todayDay;
+      currentDay = realTodayDay;
     }
 
     // Populate Multi-Year Week Dropdown (covers up to 2030)
@@ -559,18 +561,40 @@
     });
 
     function updateDayUI() {
-      // Update Day Pills
+      // Update Day Pills and add "اليوم ⭐" badge
       document.querySelectorAll(".day-pill-7").forEach(btn => {
-        if (btn.dataset.day === currentDay) {
-          btn.classList.add("active");
-        } else {
-          btn.classList.remove("active");
+        const isSelected = btn.dataset.day === currentDay;
+        const isToday = btn.dataset.day === realTodayDay;
+
+        btn.classList.toggle("active", isSelected);
+
+        let todayBadge = btn.querySelector(".today-pill-badge");
+        if (isToday) {
+          if (!todayBadge) {
+            todayBadge = document.createElement("span");
+            todayBadge.className = "today-pill-badge";
+            todayBadge.style.cssText = "background: #f59e0b; color: #1e1b4b; font-size: 0.65rem; font-weight: 800; padding: 1px 6px; border-radius: 999px; margin-top: 2px;";
+            todayBadge.textContent = "اليوم ⭐";
+            btn.appendChild(todayBadge);
+          }
+        } else if (todayBadge) {
+          todayBadge.remove();
         }
       });
 
+      // Smoothly scroll active day pill into center view
+      setTimeout(() => {
+        const activeBtn = document.querySelector(`.day-pill-7[data-day="${currentDay}"]`);
+        if (activeBtn) {
+          activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
+      }, 100);
+
       const dayObj = ALL_DAYS.find(d => d.id === currentDay) || { name: currentDay };
       const dayDate = getActualDayDate(currentWeekId, currentDay);
-      document.getElementById("active-day-heading").textContent = `حضور يوم ${dayObj.name}`;
+      const isActualToday = currentDay === realTodayDay;
+
+      document.getElementById("active-day-heading").innerHTML = `حضور يوم ${dayObj.name} ${isActualToday ? '<span class="badge badge-gold" style="font-size: 0.75rem; vertical-align: middle; margin-right: 6px;">اليوم الحالي ⭐</span>' : ''}`;
       const dateDisplay = document.getElementById("live-day-date-display");
       if (dateDisplay) {
         dateDisplay.innerHTML = `<i class="fa-regular fa-calendar-check text-gold"></i> ${dayDate.dateArabic} • (${currentWeekId})`;
@@ -811,6 +835,7 @@
     initStudentAutocomplete({
       input: "#manual-qr-input",
       placeholder: "اكتب اسم الطالب أو كوده...",
+      maxResults: 25,
       onSelect: (student) => {
         playSuccessBeep();
         handleScannedCode(student.studentCode || student.qrId || student.studentId);
@@ -825,9 +850,7 @@
       }
     });
 
-    // Initialize Camera Scanner with Safe State Tracking
-    let isCameraRunning = false;
-
+    // Camera Scanner Controls & UI
     const cameraPrompt = document.getElementById("camera-start-prompt");
     const laserOverlay = document.getElementById("scanner-laser-overlay");
 

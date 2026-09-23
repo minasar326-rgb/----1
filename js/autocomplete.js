@@ -3,7 +3,7 @@
  * Provides live instant student suggestions dropdown attached to search inputs
  */
 
-import { searchStudentsAutocomplete } from "./students.js";
+import { searchStudentsAutocomplete, normalizeArabic } from "./students.js";
 
 /**
  * Initializes interactive Autocomplete on a target input
@@ -12,7 +12,7 @@ export function initStudentAutocomplete({
   input,
   onSelect,
   placeholder = "ابحث بالاسم أو كود الطالب...",
-  maxResults = 8
+  maxResults = 25
 }) {
   const inputEl = typeof input === "string" ? document.querySelector(input) : input;
   if (!inputEl) return null;
@@ -42,8 +42,8 @@ export function initStudentAutocomplete({
       border: 1px solid var(--border-color, #e2e8f0);
       border-radius: var(--radius-md, 10px);
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-      z-index: 1050;
-      max-height: 320px;
+      z-index: 10050;
+      max-height: 340px;
       overflow-y: auto;
       display: none;
       padding: 0.35rem 0;
@@ -173,7 +173,7 @@ export function initStudentAutocomplete({
   // Keyboard navigation
   inputEl.addEventListener("input", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(handleInput, 150);
+    debounceTimer = setTimeout(handleInput, 20);
   });
 
   inputEl.addEventListener("focus", () => {
