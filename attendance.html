@@ -272,6 +272,11 @@
                   <i class="fa-solid fa-camera-rotate"></i>
                   <span>تبديل الكاميرا</span>
                 </button>
+                <label class="btn btn-outline flex-1" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;" title="مسح الكود من صورة كارنيه محفوظة">
+                  <i class="fa-solid fa-image"></i>
+                  <span>مسح صورة</span>
+                  <input type="file" id="attendance-photo-scan-input" accept="image/*" style="display: none;">
+                </label>
               </div>
 
               <!-- Fallback Manual QR / Code / Name Autocomplete Box -->
@@ -446,7 +451,7 @@
     import "./js/app.js";
     import { getStudentByQrId, getStudentById, getAllStudents, addStudent } from "./js/students.js";
     import { recordStudentAttendance, getAttendanceRecord, isSpiritualNotebookRecorded, getPartName } from "./js/attendance.js";
-    import { initScanner, stopScanner, toggleCameraFacing } from "./js/scanner.js";
+    import { initScanner, stopScanner, toggleCameraFacing, scanImageFile } from "./js/scanner.js";
     import { ATTENDANCE_PARTS, ALL_DAYS, getCurrentWeekId, getWeekDetails, getPastWeeks, getActualDayDate, showToast, playErrorBeep, playSuccessBeep, STAGES, parseStudentQrPayload, mapLegacyGradeToStage } from "./js/utils.js";
     import { initStudentAutocomplete } from "./js/autocomplete.js";
 
@@ -812,11 +817,25 @@
       }
     });
 
-    // Initialize Camera Scanner
+    // Initialize Camera Scanner with Safe State Tracking
+    let isCameraRunning = false;
+
     async function startCamera() {
-      await initScanner("attendance-qr-reader", async (decodedText) => {
-        await handleScannedCode(decodedText.trim());
-      });
+      try {
+        await initScanner("attendance-qr-reader", async (decodedText) => {
+          await handleScannedCode(decodedText.trim());
+        });
+        isCameraRunning = true;
+        document.getElementById("camera-btn-text").textContent = "إيقاف الكاميرا";
+        document.getElementById("scanner-status-badge").className = "badge badge-present";
+        document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-dot fa-fade"></i> الكاميرا نشطة`;
+      } catch (err) {
+        console.warn("Camera auto-start notice:", err);
+        isCameraRunning = false;
+        document.getElementById("camera-btn-text").textContent = "تشغيل الكاميرا";
+        document.getElementById("scanner-status-badge").className = "badge badge-inactive";
+        document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-pause"></i> متوقفة`;
+      }
     }
 
     startCamera();
@@ -830,10 +849,6 @@
         isCameraRunning = false;
       } else {
         await startCamera();
-        document.getElementById("camera-btn-text").textContent = "إيقاف الكاميرا";
-        document.getElementById("scanner-status-badge").className = "badge badge-present";
-        document.getElementById("scanner-status-badge").innerHTML = `<i class="fa-solid fa-circle-dot fa-fade"></i> الكاميرا نشطة`;
-        isCameraRunning = true;
       }
     });
 
@@ -841,6 +856,37 @@
       await toggleCameraFacing("attendance-qr-reader", async (decodedText) => {
         await handleScannedCode(decodedText.trim());
       });
+      isCameraRunning = true;
+    });
+
+    // Attendance Photo File Scan Handler (Gallery Fallback)
+    const photoScanInput = document.getElementById("attendance-photo-scan-input");
+    if (photoScanInput) {
+      photoScanInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          showToast("جاري مسح الكود من الصورة...", "info");
+          await scanImageFile(file, async (decodedText) => {
+            await handleScannedCode(decodedText.trim());
+          });
+          e.target.value = "";
+        }
+      });
+    }
+
+    // Real-Time Cross-Device Sync Listeners
+    window.addEventListener("church_attendance_updated", () => {
+      if (activeStudent) {
+        renderPartsChecklist(activeStudent);
+      }
+    });
+
+    window.addEventListener("church_students_updated", () => {
+      if (activeStudent) {
+        getStudentById(activeStudent.studentId).then(fresh => {
+          if (fresh) activeStudent = fresh;
+        });
+      }
     });
   </script>
 </body>

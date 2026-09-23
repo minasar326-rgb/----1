@@ -157,6 +157,9 @@ export function saveDemoStudents(students) {
     }
   } catch (e) {}
   memoryStudentsStore = [...students];
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent("church_students_updated", { detail: students }));
+  }
 }
 
 /**

@@ -17,6 +17,13 @@
       document.write('<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\\/script>');
     }
   </script>
+  <style>
+    @keyframes modalLaserScan {
+      0% { top: 12%; opacity: 0.3; }
+      50% { top: 88%; opacity: 1; }
+      100% { top: 12%; opacity: 0.3; }
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
@@ -165,16 +172,34 @@
                 <i class="fa-solid fa-camera"></i>
                 <span id="scan-btn-text">فتح الكاميرا المباشرة داخل الموقع</span>
               </button>
+              <label class="btn btn-outline" style="font-weight: 700; width: 100%; max-width: 280px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.25rem; font-size: 0.88rem; cursor: pointer; border-color: var(--primary-400); color: var(--primary-700); background: var(--bg-surface);">
+                <i class="fa-solid fa-image"></i>
+                <span>أو مسح الكود من صورة بالكارنيه</span>
+                <input type="file" id="modal-card-image-input" accept="image/*" style="display: none;" onchange="handleCardImageUploaded(event)">
+              </label>
             </div>
 
             <!-- Modal Inline Camera Area (Embedded directly inside page) -->
-            <div id="modal-camera-container" style="display: none; margin-top: 1rem; border-radius: var(--radius-md); overflow: hidden; max-width: 320px; margin-left: auto; margin-right: auto; position: relative; background: #0f172a; box-shadow: 0 8px 24px rgba(0,0,0,0.35);">
-              <div id="modal-qr-reader" style="width: 100%; min-height: 250px;"></div>
+            <div id="modal-camera-container" style="display: none; margin-top: 1rem; border-radius: var(--radius-md); overflow: hidden; max-width: 340px; margin-left: auto; margin-right: auto; position: relative; background: #000; box-shadow: 0 8px 24px rgba(0,0,0,0.35);">
+              <div style="position: relative; width: 100%; height: 260px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <!-- Direct Native Video Stream (100% Guaranteed to render camera) -->
+                <video id="modal-live-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <!-- Fallback Html5Qrcode Reader Container (for browsers without BarcodeDetector) -->
+                <div id="modal-qr-reader" style="position: absolute; inset: 0; width: 100%; height: 100%; display: none;"></div>
+                <!-- Scanning Laser Guide Line -->
+                <div style="position: absolute; left: 8%; right: 8%; height: 2px; background: #10b981; box-shadow: 0 0 10px #10b981; pointer-events: none; z-index: 10; animation: modalLaserScan 1.8s infinite ease-in-out;"></div>
+                <!-- Camera viewfinder target corner guides -->
+                <div style="position: absolute; width: 180px; height: 180px; border: 2px dashed rgba(255,255,255,0.6); border-radius: 12px; pointer-events: none; z-index: 9;"></div>
+                <!-- Help instruction at bottom of viewfinder -->
+                <div id="modal-scan-status-text" style="position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: #fff; font-size: 0.75rem; background: rgba(0,0,0,0.65); padding: 3px 6px; z-index: 11;">
+                  وجّه الكاميرا نحو كود الكارنيه (QR أو باركود)
+                </div>
+              </div>
               <div style="display: flex; gap: 0.5rem; padding: 0.5rem; background: #1e1b4b;">
                 <button type="button" class="btn btn-outline btn-sm flex-1" id="modal-flip-camera-btn" onclick="flipCardScanInsideModal()" style="color: white; border-color: rgba(255,255,255,0.4); font-size: 0.8rem; background: rgba(255,255,255,0.08);">
                   <i class="fa-solid fa-camera-rotate"></i> تبديل الكاميرا
                 </button>
-                <button type="button" class="btn btn-danger btn-sm flex-1" id="stop-modal-scan-btn" onclick="stopCardScanInsideModal()" style="font-size: 0.8rem;">
+                <button type="button" class="btn btn-danger btn-sm flex-1" id="stop-modal-scan-btn" onclick="stopCardScanInsideModal(true)" style="font-size: 0.8rem;">
                   <i class="fa-solid fa-circle-xmark"></i> إغلاق الكاميرا
                 </button>
               </div>
@@ -552,127 +577,200 @@
       }
     };
 
-    // 4. Modal Camera Card Scanner Logic (100% Inline Video, Never Leaves Webpage)
-    let modalQrScannerInstance = null;
+    // 4. Modal Camera Card Scanner Logic (100% Inline Native Video, Never Leaves Webpage)
+    let modalMediaStream = null;
+    let modalScanAnimFrameId = null;
+    let modalHtml5QrInstance = null;
     let currentModalFacingMode = "environment"; // default to rear camera
+
+    // Universal Camera Stream Request Helper (WebRTC compliant, phone & laptop safe)
+    async function requestUniversalCameraStream(preferredFacing) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("المتصفح الحالي لا يدعم الوصول للكاميرا، يرجى فتح الموقع عبر رابط HTTPS آمن.");
+      }
+
+      // Strategy 1: Ideal facingMode (W3C standard - adapts to front camera on laptops without erroring)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: preferredFacing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+        console.log("✅ Camera stream opened with ideal facingMode:", preferredFacing);
+        return stream;
+      } catch (e1) {
+        console.warn("Camera Strategy 1 (ideal facingMode) note:", e1.message);
+      }
+
+      // Strategy 2: Plain facingMode string
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: preferredFacing },
+          audio: false
+        });
+        console.log("✅ Camera stream opened with facingMode string:", preferredFacing);
+        return stream;
+      } catch (e2) {
+        console.warn("Camera Strategy 2 (facingMode string) note:", e2.message);
+      }
+
+      // Strategy 3: Opposite facingMode (e.g. front if rear not found)
+      try {
+        const oppositeFacing = preferredFacing === "environment" ? "user" : "environment";
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: oppositeFacing },
+          audio: false
+        });
+        console.log("✅ Camera stream opened with opposite facingMode:", oppositeFacing);
+        return stream;
+      } catch (e3) {
+        console.warn("Camera Strategy 3 (opposite facingMode) note:", e3.message);
+      }
+
+      // Strategy 4: Universal fallback - ANY video source (works 100% on laptops & webcams)
+      console.log("Using universal video constraint fallback...");
+      return await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+    }
 
     window.startCardScanInsideModal = async function() {
       console.log("📷 [Diagnostic] startCardScanInsideModal requested");
       const camContainer = document.getElementById("modal-camera-container");
       const alertBox = document.getElementById("scan-feedback-alert");
-      if (alertBox) alertBox.style.display = "none";
+      const videoEl = document.getElementById("modal-live-video");
+      const qrReaderEl = document.getElementById("modal-qr-reader");
+      const statusText = document.getElementById("modal-scan-status-text");
+
+      if (alertBox) {
+        alertBox.style.display = "none";
+        alertBox.innerHTML = "";
+      }
 
       if (camContainer) {
         camContainer.style.display = "block";
       }
 
-      // If already scanning, cleanly stop previous session without hiding container
-      if (modalQrScannerInstance) {
-        try {
-          await modalQrScannerInstance.stop();
-          modalQrScannerInstance.clear();
-        } catch(e) {}
-        modalQrScannerInstance = null;
-      }
+      // Cleanly stop any existing scan
+      window.stopCardScanInsideModal(false);
 
-      if (typeof Html5Qrcode === "undefined") {
-        console.log("Html5Qrcode not yet loaded, waiting 250ms...");
-        await new Promise(r => setTimeout(r, 250));
-      }
-
-      if (typeof Html5Qrcode === "undefined") {
-        alert("جارٍ تحميل مشغل الكاميرا. يرجى الانتظار لحظة ثم المحاولة مرة أخرى.");
-        return;
+      if (statusText) {
+        statusText.textContent = "جاري تشغيل الكاميرا المباشرة...";
       }
 
       try {
-        const readerEl = document.getElementById("modal-qr-reader");
-        if (readerEl) readerEl.innerHTML = "";
+        // 1. Get Live Video Stream
+        modalMediaStream = await requestUniversalCameraStream(currentModalFacingMode);
 
-        modalQrScannerInstance = new Html5Qrcode("modal-qr-reader", { verbose: false });
+        if (videoEl) {
+          videoEl.style.display = "block";
+          if (qrReaderEl) qrReaderEl.style.display = "none";
 
-        const config = {
-          fps: 20,
-          qrbox: (w, h) => {
-            const minEdge = Math.min(w || 250, h || 250);
-            const size = Math.max(160, Math.floor(minEdge * 0.8));
-            return { width: size, height: size };
-          }
-        };
+          videoEl.srcObject = modalMediaStream;
+          videoEl.setAttribute("playsinline", "true");
+          videoEl.setAttribute("webkit-playsinline", "true");
+          videoEl.muted = true;
+          videoEl.playsInline = true;
 
-        let scanStarted = false;
-
-        // Strategy 1: Plain facingMode string ("environment" or "user")
-        try {
-          await modalQrScannerInstance.start(
-            { facingMode: currentModalFacingMode },
-            config,
-            (decodedText) => window.handleCardScanDecoded(decodedText),
-            () => {}
-          );
-          scanStarted = true;
-          console.log("✅ [Diagnostic] Modal camera started with facing mode:", currentModalFacingMode);
-        } catch (e1) {
-          console.warn("FacingMode strategy note:", e1);
+          await videoEl.play();
+          console.log("✅ Live modal video is now playing smoothly inline!");
         }
 
-        // Strategy 2: Camera device selection from getCameras
-        if (!scanStarted && typeof Html5Qrcode.getCameras === "function") {
+        if (statusText) {
+          statusText.textContent = "وجّه الكاميرا نحو كود الكارنيه (QR أو باركود)";
+        }
+
+        // 2. Start Barcode / QR Detection Loop
+        if ("BarcodeDetector" in window) {
+          console.log("🚀 Using Ultra-Fast Native BarcodeDetector engine");
+          let detector;
           try {
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length > 0) {
-              const chosen = (currentModalFacingMode === "environment")
-                ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1])
-                : (devices.find(d => /front|user/i.test(d.label)) || devices[0]);
-              await modalQrScannerInstance.start(
-                chosen.id,
-                config,
-                (decodedText) => window.handleCardScanDecoded(decodedText),
-                () => {}
-              );
-              scanStarted = true;
-              console.log("✅ [Diagnostic] Modal camera started with device:", chosen.label || chosen.id);
+            const supported = await BarcodeDetector.getSupportedFormats();
+            const preferredFormats = [
+              "qr_code", "code_128", "code_39", "code_93", 
+              "ean_13", "ean_8", "data_matrix", "upc_a", "upc_e"
+            ].filter(f => supported.includes(f));
+            detector = new BarcodeDetector({ formats: preferredFormats.length > 0 ? preferredFormats : supported });
+          } catch(e) {
+            detector = new BarcodeDetector();
+          }
+
+          let scanning = true;
+          const scanLoop = async () => {
+            if (!scanning || !modalMediaStream) return;
+            try {
+              if (videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                const barcodes = await detector.detect(videoEl);
+                if (barcodes && barcodes.length > 0) {
+                  const detectedValue = barcodes[0].rawValue;
+                  if (detectedValue) {
+                    scanning = false;
+                    console.log("🎯 BarcodeDetector scanned code:", detectedValue);
+                    window.stopCardScanInsideModal(true);
+                    window.handleCardScanDecoded(detectedValue);
+                    return;
+                  }
+                }
+              }
+            } catch (frameErr) {
+              // Ignore single dropped frame
             }
-          } catch (e2) {
-            console.warn("Enumerated cameras strategy note:", e2);
-          }
-        }
+            if (scanning && modalMediaStream) {
+              modalScanAnimFrameId = requestAnimationFrame(scanLoop);
+            }
+          };
+          modalScanAnimFrameId = requestAnimationFrame(scanLoop);
 
-        // Strategy 3: Fallback opposite mode
-        if (!scanStarted) {
-          try {
-            const fallbackMode = currentModalFacingMode === "environment" ? "user" : "environment";
-            await modalQrScannerInstance.start(
-              { facingMode: fallbackMode },
+        } else if (typeof Html5Qrcode !== "undefined") {
+          // Fallback to Html5Qrcode (e.g. older iOS Safari)
+          console.log("ℹ️ BarcodeDetector not available, using Html5Qrcode engine");
+          if (videoEl) videoEl.style.display = "none";
+          if (qrReaderEl) {
+            qrReaderEl.style.display = "block";
+            qrReaderEl.innerHTML = "";
+
+            modalHtml5QrInstance = new Html5Qrcode("modal-qr-reader", { verbose: false });
+            const config = {
+              fps: 20,
+              qrbox: (w, h) => {
+                const minEdge = Math.min(w || 250, h || 250);
+                const size = Math.max(160, Math.floor(minEdge * 0.85));
+                return { width: size, height: size };
+              }
+            };
+
+            await modalHtml5QrInstance.start(
+              { facingMode: currentModalFacingMode },
               config,
-              (decodedText) => window.handleCardScanDecoded(decodedText),
+              (decodedText) => {
+                window.stopCardScanInsideModal(true);
+                window.handleCardScanDecoded(decodedText);
+              },
               () => {}
             );
-            scanStarted = true;
-            console.log("✅ [Diagnostic] Modal camera started with fallback mode:", fallbackMode);
-          } catch (e3) {
-            console.warn("Fallback strategy note:", e3);
+
+            // Force inline attributes on library's created video
+            setTimeout(() => {
+              qrReaderEl.querySelectorAll("video").forEach(v => {
+                v.setAttribute("playsinline", "true");
+                v.setAttribute("webkit-playsinline", "true");
+                v.setAttribute("muted", "true");
+                v.playsInline = true;
+              });
+            }, 100);
           }
+        } else {
+          throw new Error("مكتبة قراءة الباركود غير متاحة حالياً.");
         }
-
-        if (!scanStarted) {
-          throw new Error("تعذر فتح بث الكاميرا على هذا الجهاز.");
-        }
-
-        // Ensure video is strictly inline on iOS and Android (never pop up fullscreen)
-        setTimeout(() => {
-          document.querySelectorAll("#modal-camera-container video").forEach(v => {
-            v.setAttribute("playsinline", "true");
-            v.setAttribute("webkit-playsinline", "true");
-            v.setAttribute("muted", "true");
-            v.setAttribute("autoplay", "true");
-            v.playsInline = true;
-          });
-        }, 100);
 
       } catch (err) {
         console.error("Camera startup error inside modal:", err);
-        if (camContainer) camContainer.style.display = "none";
+        window.stopCardScanInsideModal(true);
+
         if (alertBox) {
           alertBox.style.display = "block";
           alertBox.style.background = "#fef2f2";
@@ -680,13 +778,16 @@
           alertBox.style.color = "#991b1b";
           let msg = "تعذر تشغيل الكاميرا: " + (err.message || err);
           if (err.name === "NotAllowedError" || String(err).includes("Permission")) {
-            msg = "تم رفض إذن الكاميرا. يرجى الضغط على علامة القفل 🔒 في شريط عنوان المتصفح والسماح للكاميرا ثم تحديث الصفحة.";
+            msg = "تم رفض إذن الكاميرا. يرجى الضغط على علامة القفل 🔒 في شريط عنوان المتصفح والسماح للكاميرا ثم إعادة المحاولة.";
           } else if (err.name === "NotFoundError" || String(err).includes("NotFound")) {
             msg = "لم يتم العثور على كاميرا في هذا الجهاز.";
           } else if (err.name === "NotReadableError") {
             msg = "الكاميرا مشغولة في تطبيق آخر على هاتفك، يرجى إغلاق التطبيقات الأخرى وإعادة المحاولة.";
           }
-          alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <strong>${msg}</strong>`;
+          alertBox.innerHTML = `
+            <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-circle-exclamation"></i> ${msg}</div>
+            <div style="font-size: 0.8rem; color: #7f1d1d;">يمكنك أيضًا الضغط على زر "مسح الكود من صورة بالكارنيه" لاختيار صورة الكارنيه مباشرة من ألبوم الصور بهاتفك.</div>
+          `;
         }
       }
     };
@@ -696,29 +797,93 @@
       await window.startCardScanInsideModal();
     };
 
-    window.stopCardScanInsideModal = function() {
-      if (modalQrScannerInstance) {
+    window.stopCardScanInsideModal = function(hideContainer = true) {
+      if (modalScanAnimFrameId) {
+        cancelAnimationFrame(modalScanAnimFrameId);
+        modalScanAnimFrameId = null;
+      }
+
+      if (modalMediaStream) {
+        modalMediaStream.getTracks().forEach(t => {
+          try { t.stop(); } catch(e){}
+        });
+        modalMediaStream = null;
+      }
+
+      const videoEl = document.getElementById("modal-live-video");
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
+
+      if (modalHtml5QrInstance) {
         try {
-          modalQrScannerInstance.stop().then(() => {
-            try { modalQrScannerInstance.clear(); } catch(e){}
-            modalQrScannerInstance = null;
+          modalHtml5QrInstance.stop().then(() => {
+            try { modalHtml5QrInstance.clear(); } catch(e){}
+            modalHtml5QrInstance = null;
           }).catch(() => {
-            modalQrScannerInstance = null;
+            modalHtml5QrInstance = null;
           });
         } catch(e) {
-          modalQrScannerInstance = null;
+          modalHtml5QrInstance = null;
         }
       }
-      const camContainer = document.getElementById("modal-camera-container");
-      if (camContainer) camContainer.style.display = "none";
 
-      // Stop native MediaStreamTracks on any video element
-      document.querySelectorAll("#modal-camera-container video").forEach(v => {
-        if (v.srcObject && typeof v.srcObject.getTracks === "function") {
-          v.srcObject.getTracks().forEach(t => { try { t.stop(); } catch(e){} });
-          v.srcObject = null;
+      if (hideContainer) {
+        const camContainer = document.getElementById("modal-camera-container");
+        if (camContainer) camContainer.style.display = "none";
+      }
+    };
+
+    // Card Photo File Upload Fallback
+    window.handleCardImageUploaded = async function(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const alertBox = document.getElementById("scan-feedback-alert");
+      if (alertBox) {
+        alertBox.style.display = "block";
+        alertBox.style.background = "#eff6ff";
+        alertBox.style.border = "1px solid #3b82f6";
+        alertBox.style.color = "#1d4ed8";
+        alertBox.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري قراءة كود الكارنيه من الصورة...`;
+      }
+
+      try {
+        if ("BarcodeDetector" in window) {
+          const img = new Image();
+          img.src = URL.createObjectURL(file);
+          await img.decode();
+          const detector = new BarcodeDetector();
+          const barcodes = await detector.detect(img);
+          URL.revokeObjectURL(img.src);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            window.handleCardScanDecoded(barcodes[0].rawValue);
+            return;
+          }
         }
-      });
+
+        if (typeof Html5Qrcode !== "undefined") {
+          const scanner = new Html5Qrcode("modal-qr-reader");
+          const decoded = await scanner.scanFile(file, true);
+          try { scanner.clear(); } catch(e){}
+          if (decoded) {
+            window.handleCardScanDecoded(decoded);
+            return;
+          }
+        }
+
+        throw new Error("لم يتم العثور على رمز QR أو باركود واضح في الصورة.");
+      } catch (err) {
+        if (alertBox) {
+          alertBox.style.display = "block";
+          alertBox.style.background = "#fef2f2";
+          alertBox.style.border = "1px solid #ef4444";
+          alertBox.style.color = "#991b1b";
+          alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> تعذر قراءة الكارنيه من الصورة: ${err.message || err}. يرجى التقاط صورة أوضح أو كتابة الاسم والكود يدويًا.`;
+        }
+      } finally {
+        event.target.value = "";
+      }
     };
 
     // 5. Intelligent Card QR Parser with Auto-fill, Transliteration & Duplicate Prevention

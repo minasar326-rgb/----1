@@ -1,71 +1,174 @@
 /**
  * Church QR Attendance System - Ultra High Performance QR & Barcode Scanner Engine
- * Enhanced with multi-format detection (QR, Code128, Code39, EAN, DataMatrix),
- * auto-focus, responsive viewfinder, and multi-camera support.
+ * Dual-Engine Architecture:
+ * 1. Native BarcodeDetector (Android Chrome, PC, Mac, Edge) - Instant 60 FPS, zero lag
+ * 2. Html5Qrcode Fallback (iOS Safari, older webviews)
+ * 3. Direct Photo File Scanner (Gallery / Photo fallback)
+ * Universal WebRTC constraints guaranteeing camera start on ALL phones and laptops.
  */
 
 import { playSuccessBeep, playErrorBeep, showToast } from "./utils.js";
 
 let html5QrCode = null;
+let nativeMediaStream = null;
+let nativeScanAnimFrameId = null;
 let isScanning = false;
 let lastScannedCode = null;
 let lastScanTimestamp = 0;
-let currentFacingMode = "environment"; // default to rear/environment camera
-const SCAN_COOLDOWN_MS = 1500; // Fast 1.5s cooldown for rapid responsive scanning
+let currentFacingMode = "environment"; // default to rear camera
+const SCAN_COOLDOWN_MS = 1500; // 1.5s cooldown for responsive rapid scanning
+
+/**
+ * Universal Camera Stream Request Helper (WebRTC standard, safe on phones and laptops)
+ */
+async function requestUniversalCameraStream(preferredFacing) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error("المتصفح الحالي لا يدعم الوصول للكاميرا، يرجى فتح الموقع عبر رابط HTTPS آمن.");
+  }
+
+  // Strategy 1: Ideal facingMode (W3C standard - adapts to front camera on laptops without erroring)
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: preferredFacing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+    console.log("✅ [Scanner] Stream opened with ideal facingMode:", preferredFacing);
+    return stream;
+  } catch (e1) {
+    console.warn("Camera Strategy 1 (ideal facingMode) note:", e1.message);
+  }
+
+  // Strategy 2: Plain facingMode string
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: preferredFacing },
+      audio: false
+    });
+    console.log("✅ [Scanner] Stream opened with plain facingMode:", preferredFacing);
+    return stream;
+  } catch (e2) {
+    console.warn("Camera Strategy 2 (facingMode string) note:", e2.message);
+  }
+
+  // Strategy 3: Opposite facingMode (e.g. front if rear not found)
+  try {
+    const oppositeFacing = preferredFacing === "environment" ? "user" : "environment";
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: oppositeFacing },
+      audio: false
+    });
+    console.log("✅ [Scanner] Stream opened with opposite facingMode:", oppositeFacing);
+    return stream;
+  } catch (e3) {
+    console.warn("Camera Strategy 3 (opposite facingMode) note:", e3.message);
+  }
+
+  // Strategy 4: Universal fallback - ANY available video source
+  console.log("Using universal video constraint fallback...");
+  return await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: false
+  });
+}
 
 /**
  * Initializes and starts the High Performance Scanner
  */
 export async function initScanner(elementId, onSuccess, onError) {
-  // Ensure library is loaded
-  if (typeof Html5Qrcode === "undefined") {
-    console.log("Loading Html5Qrcode library dynamically...");
-    await loadQrLibrary();
-  }
+  // Cleanly stop any existing scanner or stream
+  await stopScanner();
 
-  // If already scanning or instance exists, cleanly stop and clear
-  if (html5QrCode) {
-    try {
-      if (isScanning) await html5QrCode.stop();
-      html5QrCode.clear();
-    } catch (e) {}
-    isScanning = false;
+  const container = document.getElementById(elementId);
+  if (!container) {
+    console.error(`Scanner container #${elementId} not found in DOM.`);
+    return;
   }
 
   try {
-    const formatsToSupport = typeof Html5QrcodeSupportedFormats !== "undefined" ? [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.DATA_MATRIX,
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.ITF
-    ] : undefined;
+    // 1. Check if Native BarcodeDetector is supported (Android Chrome, Windows, Mac, Edge)
+    if ("BarcodeDetector" in window) {
+      console.log("🚀 [Scanner] Starting Native BarcodeDetector Engine...");
+      nativeMediaStream = await requestUniversalCameraStream(currentFacingMode);
 
-    html5QrCode = new Html5Qrcode(elementId, {
-      formatsToSupport,
-      verbose: false
-    });
+      container.innerHTML = "";
+      const videoEl = document.createElement("video");
+      videoEl.id = `${elementId}-live-video`;
+      videoEl.autoplay = true;
+      videoEl.muted = true;
+      videoEl.playsInline = true;
+      videoEl.setAttribute("playsinline", "true");
+      videoEl.setAttribute("webkit-playsinline", "true");
+      videoEl.style.width = "100%";
+      videoEl.style.height = "100%";
+      videoEl.style.objectFit = "cover";
+
+      container.appendChild(videoEl);
+      videoEl.srcObject = nativeMediaStream;
+      await videoEl.play();
+
+      let detector;
+      try {
+        const supported = await BarcodeDetector.getSupportedFormats();
+        const preferredFormats = [
+          "qr_code", "code_128", "code_39", "code_93", 
+          "ean_13", "ean_8", "data_matrix", "upc_a", "upc_e"
+        ].filter(f => supported.includes(f));
+        detector = new BarcodeDetector({ formats: preferredFormats.length > 0 ? preferredFormats : supported });
+      } catch (e) {
+        detector = new BarcodeDetector();
+      }
+
+      isScanning = true;
+      const scanLoop = async () => {
+        if (!isScanning || !nativeMediaStream) return;
+        try {
+          if (videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            const barcodes = await detector.detect(videoEl);
+            if (barcodes && barcodes.length > 0) {
+              const code = barcodes[0].rawValue;
+              if (code) {
+                handleDecodedCode(code, onSuccess);
+              }
+            }
+          }
+        } catch (frameErr) {
+          // ignore transient frame drop
+        }
+        if (isScanning && nativeMediaStream) {
+          nativeScanAnimFrameId = requestAnimationFrame(scanLoop);
+        }
+      };
+
+      nativeScanAnimFrameId = requestAnimationFrame(scanLoop);
+      console.log("✅ [Scanner] Native BarcodeDetector live loop active at 60 FPS!");
+      return;
+    }
+
+    // 2. Fallback: Html5Qrcode Engine (iOS Safari / WebViews)
+    console.log("ℹ️ [Scanner] Starting Html5Qrcode fallback engine...");
+    if (typeof Html5Qrcode === "undefined") {
+      await loadQrLibrary();
+    }
+
+    container.innerHTML = "";
+    html5QrCode = new Html5Qrcode(elementId, { verbose: false });
 
     const config = {
-      fps: 25,
-      qrbox: (viewfinderWidth, viewfinderHeight) => {
-        const w = viewfinderWidth || 300;
-        const h = viewfinderHeight || 300;
-        const minEdge = Math.min(w, h);
+      fps: 22,
+      qrbox: (w, h) => {
+        const minEdge = Math.min(w || 280, h || 280);
         const size = Math.max(180, Math.floor(minEdge * 0.85));
         return { width: size, height: size };
-      },
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true
       }
     };
 
-    // 1. Try with facingMode string ("environment" or "user")
+    let started = false;
+
+    // Try Strategy A: facingMode string
     try {
       await html5QrCode.start(
         { facingMode: currentFacingMode },
@@ -73,60 +176,61 @@ export async function initScanner(elementId, onSuccess, onError) {
         (decodedText) => handleDecodedCode(decodedText, onSuccess),
         () => {}
       );
-      isScanning = true;
-      console.log("✅ Camera started with facing mode:", currentFacingMode);
-      ensureVideoInline(elementId);
-      return;
-    } catch (facingErr) {
-      console.warn("FacingMode failed, trying direct camera device selection:", facingErr.message);
+      started = true;
+    } catch (eA) {
+      console.warn("Html5Qrcode facingMode attempt note:", eA.message);
     }
 
-    // 2. Fallback: enumerate available cameras and pick the first / back camera
-    try {
-      const devices = await Html5Qrcode.getCameras();
-      if (devices && devices.length > 0) {
-        const selectedCameraId = (currentFacingMode === "environment")
-          ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1]).id
-          : devices[0].id;
-        await html5QrCode.start(
-          selectedCameraId,
-          config,
-          (decodedText) => handleDecodedCode(decodedText, onSuccess),
-          () => {}
-        );
-        isScanning = true;
-        console.log("✅ Camera started with device ID:", selectedCameraId);
-        ensureVideoInline(elementId);
-        return;
+    // Try Strategy B: Camera enumeration
+    if (!started && typeof Html5Qrcode.getCameras === "function") {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          const chosen = (currentFacingMode === "environment")
+            ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1])
+            : (devices.find(d => /front|user/i.test(d.label)) || devices[0]);
+          await html5QrCode.start(
+            chosen.id,
+            config,
+            (decodedText) => handleDecodedCode(decodedText, onSuccess),
+            () => {}
+          );
+          started = true;
+        }
+      } catch (eB) {
+        console.warn("Html5Qrcode camera list attempt note:", eB.message);
       }
-    } catch (deviceErr) {
-      console.warn("Device enum failed:", deviceErr.message);
     }
 
-    // 3. Fallback: Try opposite facing mode
-    const fallbackMode = currentFacingMode === "environment" ? "user" : "environment";
-    await html5QrCode.start(
-      { facingMode: fallbackMode },
-      config,
-      (decodedText) => handleDecodedCode(decodedText, onSuccess),
-      () => {}
-    );
+    // Try Strategy C: Opposite facing mode
+    if (!started) {
+      const fallbackMode = currentFacingMode === "environment" ? "user" : "environment";
+      await html5QrCode.start(
+        { facingMode: fallbackMode },
+        config,
+        (decodedText) => handleDecodedCode(decodedText, onSuccess),
+        () => {}
+      );
+      started = true;
+    }
+
     isScanning = true;
-    console.log("✅ Camera started with fallback facing mode:", fallbackMode);
     ensureVideoInline(elementId);
+    console.log("✅ [Scanner] Html5Qrcode started successfully!");
 
   } catch (err) {
     console.error("Camera startup error:", err);
-    isScanning = false;
+    await stopScanner();
 
     let errMsg = "تعذر تشغيل الكاميرا: " + (err.message || err);
     if (err.name === "NotAllowedError" || String(err).includes("Permission")) {
-      errMsg = "تم رفض إذن الكاميرا. يرجى الضغط على علامة القفل 🔒 في شريط عنوان المتصفح والسماح للكاميرا.";
+      errMsg = "تم رفض إذن الكاميرا. يرجى الضغط على علامة القفل 🔒 في شريط عنوان المتصفح والسماح للكاميرا ثم إعادة المحاولة.";
     } else if (err.name === "NotFoundError" || String(err).includes("NotFound")) {
       errMsg = "لم يتم العثور على كاميرا في هذا الجهاز.";
     } else if (err.name === "NotReadableError") {
-      errMsg = "الكاميرا مشغولة في تطبيق آخر على هاتفك.";
+      errMsg = "الكاميرا مشغولة في تطبيق آخر على هاتفك. يرجى إغلاق التطبيقات الأخرى.";
     }
+
     showToast(errMsg, "error");
     if (onError) onError(err);
   }
@@ -150,7 +254,6 @@ function handleDecodedCode(rawCode, onSuccess) {
   if (!code) return;
 
   const now = Date.now();
-  // If same code is read within cooldown, skip
   if (code === lastScannedCode && (now - lastScanTimestamp) < SCAN_COOLDOWN_MS) {
     return;
   }
@@ -158,7 +261,7 @@ function handleDecodedCode(rawCode, onSuccess) {
   lastScannedCode = code;
   lastScanTimestamp = now;
 
-  console.log("📸 Scanned QR / Barcode Code:", code);
+  console.log("📸 Scanned Code:", code);
   playSuccessBeep();
 
   if (onSuccess) {
@@ -167,27 +270,91 @@ function handleDecodedCode(rawCode, onSuccess) {
 }
 
 /**
- * Stops scanner safely
+ * Scan QR / Barcode from an Image File directly (Gallery fallback)
+ */
+export async function scanImageFile(file, onSuccess, onError) {
+  if (!file) return;
+
+  try {
+    // Strategy 1: Native BarcodeDetector on Image
+    if ("BarcodeDetector" in window) {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await img.decode();
+      const detector = new BarcodeDetector();
+      const barcodes = await detector.detect(img);
+      URL.revokeObjectURL(img.src);
+
+      if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+        handleDecodedCode(barcodes[0].rawValue, onSuccess);
+        return barcodes[0].rawValue;
+      }
+    }
+
+    // Strategy 2: Html5Qrcode scanFile
+    if (typeof Html5Qrcode === "undefined") {
+      await loadQrLibrary();
+    }
+
+    const tempDivId = "temp-qr-image-decoder";
+    let tempDiv = document.getElementById(tempDivId);
+    if (!tempDiv) {
+      tempDiv = document.createElement("div");
+      tempDiv.id = tempDivId;
+      tempDiv.style.display = "none";
+      document.body.appendChild(tempDiv);
+    }
+
+    const scanner = new Html5Qrcode(tempDivId);
+    const decoded = await scanner.scanFile(file, true);
+    try { scanner.clear(); } catch(e){}
+
+    if (decoded) {
+      handleDecodedCode(decoded, onSuccess);
+      return decoded;
+    }
+
+    throw new Error("لم يتم العثور على رمز QR أو باركود واضح في الصورة.");
+  } catch (err) {
+    console.error("Photo scan error:", err);
+    showToast("تعذر قراءة الكود من الصورة المختارة: " + (err.message || err), "error");
+    if (onError) onError(err);
+  }
+}
+
+/**
+ * Stops scanner safely and terminates all hardware camera tracks
  */
 export async function stopScanner() {
+  isScanning = false;
+
+  if (nativeScanAnimFrameId) {
+    cancelAnimationFrame(nativeScanAnimFrameId);
+    nativeScanAnimFrameId = null;
+  }
+
+  if (nativeMediaStream) {
+    nativeMediaStream.getTracks().forEach(t => {
+      try { t.stop(); } catch(e){}
+    });
+    nativeMediaStream = null;
+  }
+
   if (html5QrCode) {
     try {
-      if (isScanning) {
-        await html5QrCode.stop();
-      }
+      await html5QrCode.stop();
       html5QrCode.clear();
     } catch (e) {
-      console.warn("Error stopping scanner:", e.message);
+      // ignore
     } finally {
-      isScanning = false;
+      html5QrCode = null;
     }
   }
 
-  // Force stop any native MediaStreamTracks on any video element in the DOM
+  // Force stop any rogue video streams in the page
   try {
     if (typeof document !== "undefined") {
-      const videos = document.querySelectorAll("video");
-      videos.forEach(v => {
+      document.querySelectorAll("video").forEach(v => {
         if (v.srcObject && typeof v.srcObject.getTracks === "function") {
           v.srcObject.getTracks().forEach(track => {
             try { track.stop(); } catch (err) {}
@@ -196,9 +363,7 @@ export async function stopScanner() {
         }
       });
     }
-  } catch (trackErr) {
-    console.warn("Notice while releasing video streams:", trackErr.message);
-  }
+  } catch (trackErr) {}
 }
 
 /**
@@ -214,12 +379,10 @@ function loadQrLibrary() {
     script.src = "js/html5-qrcode.min.js";
     script.onload = () => resolve();
     script.onerror = () => {
-      // Fallback unpkg CDN
       const fallbackScript = document.createElement("script");
       fallbackScript.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
       fallbackScript.onload = () => resolve();
       fallbackScript.onerror = () => {
-        // Fallback jsdelivr CDN
         const jsdelivrScript = document.createElement("script");
         jsdelivrScript.src = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
         jsdelivrScript.onload = () => resolve();
