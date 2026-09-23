@@ -583,6 +583,23 @@
     let modalHtml5QrInstance = null;
     let currentModalFacingMode = "environment"; // default to rear camera
 
+    function loadHtml5QrScript() {
+      return new Promise((resolve) => {
+        if (typeof Html5Qrcode !== "undefined") return resolve(true);
+        const s1 = document.createElement("script");
+        s1.src = "js/html5-qrcode.min.js";
+        s1.onload = () => resolve(true);
+        s1.onerror = () => {
+          const s2 = document.createElement("script");
+          s2.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+          s2.onload = () => resolve(true);
+          s2.onerror = () => resolve(false);
+          document.head.appendChild(s2);
+        };
+        document.head.appendChild(s1);
+      });
+    }
+
     // Universal Camera Stream Request Helper (WebRTC compliant, phone & laptop safe)
     async function requestUniversalCameraStream(preferredFacing) {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -719,15 +736,25 @@
               };
               modalScanAnimFrameId = requestAnimationFrame(scanLoop);
               nativeStarted = true;
+              console.log("✅ Live modal camera running with Native BarcodeDetector at 60 FPS!");
+              return;
             }
           } catch(detErr) {
             console.warn("BarcodeDetector capability note, falling back cleanly to Html5Qrcode:", detErr.message);
           }
         }
 
-        if (!nativeStarted && typeof Html5Qrcode !== "undefined") {
-          // Fallback to Html5Qrcode (e.g. older iOS Safari or platforms where BarcodeDetector lacks qr_code)
-          console.log("ℹ️ BarcodeDetector not available, using Html5Qrcode engine");
+        if (nativeStarted) {
+          return;
+        }
+
+        // Fallback: Html5Qrcode Engine (iOS Safari / Standard Web)
+        if (typeof Html5Qrcode === "undefined") {
+          await loadHtml5QrScript();
+        }
+
+        if (typeof Html5Qrcode !== "undefined") {
+          console.log("ℹ️ Starting Html5Qrcode engine inside modal");
           if (videoEl) videoEl.style.display = "none";
           if (qrReaderEl) {
             qrReaderEl.style.display = "block";
@@ -764,7 +791,7 @@
             }, 100);
           }
         } else {
-          throw new Error("مكتبة قراءة الباركود غير متاحة حالياً.");
+          throw new Error("تعذر تحميل مكتبة قراءة الباركود، يرجى التأكد من اتصال الإنترنت أو إعادة تحميل الصفحة.");
         }
 
       } catch (err) {
