@@ -169,49 +169,40 @@ export async function initFirebaseCloud() {
         // 1. Students Live Real-time Sync
         const studentsColl = modules._collection(db, "students");
         modules._onSnapshot(studentsColl, (snapshot) => {
-          if (!snapshot.empty) {
-            const liveList = snapshot.docs.map(d => ({ studentId: d.id, ...d.data() }));
-            localStorage.setItem("church_attendance_students", JSON.stringify(liveList));
-            clearTimeout(studentsDebounce);
-            studentsDebounce = setTimeout(() => {
-              window.dispatchEvent(new CustomEvent("church_students_updated", { detail: liveList }));
-            }, 250);
-            console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveList.length} students from cloud across all devices!`);
-          } else if (!_hasSeeded) {
-            _hasSeeded = true;
-            // If cloud is empty, automatically seed existing local students to cloud!
-            const localData = localStorage.getItem("church_attendance_students");
-            if (localData) {
-              try {
-                const parsed = JSON.parse(localData);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  console.log(`🌱 Seeding ${parsed.length} initial students to Cloud Firestore...`);
-                  parsed.forEach(st => {
-                    const sId = st.studentId || st.studentCode || st.id;
-                    if (sId) {
-                      const docRef = modules._doc(db, "students", sId);
-                      modules._setDoc(docRef, { ...st, studentId: sId }, { merge: true }).catch(() => {});
-                    }
-                  });
-                }
-              } catch (e) {}
-            }
+          const liveList = snapshot.docs.map(d => {
+            const data = d.data();
+            return {
+              studentId: d.id,
+              ...data,
+              studentCode: data.studentCode || d.id
+            };
+          });
+          localStorage.setItem("church_attendance_students", JSON.stringify(liveList));
+          clearTimeout(studentsDebounce);
+          studentsDebounce = setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("church_students_updated", { detail: liveList }));
+          }, 100);
+          console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveList.length} students from cloud across all devices!`);
+        }, (err) => {
+          console.warn("Students sync listener notice:", err.message);
+          if (err.message && (err.message.includes("permission") || err.code === "permission-denied")) {
+            window.dispatchEvent(new CustomEvent("firebase_permission_error", { detail: err }));
           }
-        }, (err) => console.log("Students sync listener notice:", err.message));
+        });
 
         // 2. Attendance Records Live Real-time Sync
         const attendanceColl = modules._collection(db, "attendance");
         modules._onSnapshot(attendanceColl, (snapshot) => {
-          if (!snapshot.empty) {
-            const liveRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            localStorage.setItem("church_attendance_records", JSON.stringify(liveRecords));
-            clearTimeout(attendanceDebounce);
-            attendanceDebounce = setTimeout(() => {
-              window.dispatchEvent(new CustomEvent("church_attendance_updated", { detail: liveRecords }));
-            }, 250);
-            console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveRecords.length} attendance records across all devices!`);
-          }
-        }, (err) => console.log("Attendance sync listener notice:", err.message));
+          const liveRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          localStorage.setItem("church_attendance_records", JSON.stringify(liveRecords));
+          clearTimeout(attendanceDebounce);
+          attendanceDebounce = setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("church_attendance_updated", { detail: liveRecords }));
+          }, 100);
+          console.log(`🔄 [Realtime Cloud Sync] Synchronized ${liveRecords.length} attendance records across all devices!`);
+        }, (err) => {
+          console.warn("Attendance sync listener notice:", err.message);
+        });
       } catch (syncErr) {
         console.warn("Realtime stream listener notice:", syncErr.message);
       }

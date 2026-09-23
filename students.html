@@ -150,39 +150,37 @@
         <div class="modal-body">
           <input type="hidden" id="student-edit-id">
 
-          <!-- Primary Hero: Auto-Scan Student Card with Camera -->
+          <!-- Primary Hero: Auto-Scan Student Card with Inline Camera (Strictly inside page) -->
           <div class="card-scan-hero-box" style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border: 2px dashed #6366f1; border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; text-align: center;">
             <div style="font-weight: 800; font-size: 1.1rem; color: #3730a3; margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
               <i class="fa-solid fa-camera-retro fa-lg" style="color: #4f46e5;"></i>
-              <span>تصوير / Scan الكارنيه بالكاميرا</span>
+              <span>مسح / Scan الكارنيه بالكاميرا مباشرة</span>
             </div>
             <p style="font-size: 0.85rem; color: #4338ca; margin-bottom: 0.85rem; line-height: 1.4;">
-              وجّه الكاميرا لكارنيه الطالب لاستخراج اسمه ومرحلته وملء الخانات تلقائيًا دون كتابة يدوية!
+              تعمل الكاميرا مباشرة هنا داخل الصفحة لمسح كود الكارنيه وملء اسم الطالب تلقائيًا دون الخروج من الموقع!
             </p>
 
             <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin: 0 auto; max-width: 380px;">
-              <button type="button" class="btn btn-primary" id="start-modal-scan-btn" onclick="startCardScanInsideModal()" style="box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); font-weight: 700; flex: 1; min-width: 170px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1rem; font-size: 0.9rem; cursor: pointer;">
+              <button type="button" class="btn btn-primary" id="start-modal-scan-btn" onclick="startCardScanInsideModal()" style="box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); font-weight: 700; width: 100%; max-width: 280px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1.25rem; font-size: 0.95rem; cursor: pointer;">
                 <i class="fa-solid fa-camera"></i>
-                <span id="scan-btn-text">فتح الكاميرا المباشرة</span>
-              </button>
-              <button type="button" class="btn btn-outline" id="snap-photo-card-btn" onclick="triggerCardPhotoCapture()" style="font-weight: 700; flex: 1; min-width: 170px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1rem; font-size: 0.9rem; cursor: pointer; background: var(--bg-surface);">
-                <i class="fa-solid fa-image"></i>
-                <span>التقاط / رفع صورة</span>
+                <span id="scan-btn-text">فتح الكاميرا المباشرة داخل الموقع</span>
               </button>
             </div>
-            <input type="file" id="modal-card-file-input" accept="image/*" capture="environment" style="display: none;" onchange="handleModalCardFileInput(this)">
 
-            <!-- Modal Inline Camera Area -->
-            <div id="modal-camera-container" style="display: none; margin-top: 1rem; border-radius: var(--radius-md); overflow: hidden; max-width: 320px; margin-left: auto; margin-right: auto; position: relative; background: #000; box-shadow: 0 8px 20px rgba(0,0,0,0.25);">
-              <div id="modal-qr-reader" style="width: 100%;"></div>
-              <button type="button" class="btn btn-danger btn-sm w-full" id="stop-modal-scan-btn" onclick="stopCardScanInsideModal()" style="margin-top: 0.5rem; border-radius: 0 0 var(--radius-md) var(--radius-md); cursor: pointer;">
-                <i class="fa-solid fa-circle-xmark"></i> إغلاق الكاميرا
-              </button>
+            <!-- Modal Inline Camera Area (Embedded directly inside page) -->
+            <div id="modal-camera-container" style="display: none; margin-top: 1rem; border-radius: var(--radius-md); overflow: hidden; max-width: 320px; margin-left: auto; margin-right: auto; position: relative; background: #0f172a; box-shadow: 0 8px 24px rgba(0,0,0,0.35);">
+              <div id="modal-qr-reader" style="width: 100%; min-height: 250px;"></div>
+              <div style="display: flex; gap: 0.5rem; padding: 0.5rem; background: #1e1b4b;">
+                <button type="button" class="btn btn-outline btn-sm flex-1" id="modal-flip-camera-btn" onclick="flipCardScanInsideModal()" style="color: white; border-color: rgba(255,255,255,0.4); font-size: 0.8rem; background: rgba(255,255,255,0.08);">
+                  <i class="fa-solid fa-camera-rotate"></i> تبديل الكاميرا
+                </button>
+                <button type="button" class="btn btn-danger btn-sm flex-1" id="stop-modal-scan-btn" onclick="stopCardScanInsideModal()" style="font-size: 0.8rem;">
+                  <i class="fa-solid fa-circle-xmark"></i> إغلاق الكاميرا
+                </button>
+              </div>
             </div>
-            <!-- Hidden container for file scan processing -->
-            <div id="modal-qr-reader-hidden" style="display: none;"></div>
 
-            <!-- Extracted info / Duplicate warning alert -->
+            <!-- Extracted info / alert -->
             <div id="scan-feedback-alert" style="display: none; margin-top: 0.85rem; text-align: right; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.875rem;"></div>
           </div>
           
@@ -344,8 +342,7 @@
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       } catch (e) {}
-      localStorage.setItem("church_attendance_students", JSON.stringify(INITIAL_SEED_STUDENTS));
-      return INITIAL_SEED_STUDENTS;
+      return [];
     }
 
     function saveStoredStudents(list) {
@@ -555,49 +552,9 @@
       }
     };
 
-    // 4. Modal Camera Card Scanner Logic (100% Reliable QR / Barcode Extraction)
+    // 4. Modal Camera Card Scanner Logic (100% Inline Video, Never Leaves Webpage)
     let modalQrScannerInstance = null;
-
-    window.triggerCardPhotoCapture = function() {
-      const fileInput = document.getElementById("modal-card-file-input");
-      if (fileInput) fileInput.click();
-    };
-
-    window.handleModalCardFileInput = async function(inputEl) {
-      if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
-      const file = inputEl.files[0];
-      const alertBox = document.getElementById("scan-feedback-alert");
-      if (alertBox) {
-        alertBox.style.display = "block";
-        alertBox.style.background = "#eff6ff";
-        alertBox.style.border = "2px solid #3b82f6";
-        alertBox.style.color = "#1e40af";
-        alertBox.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جارٍ فحص صورة الكارنيه واستخراج البيانات...`;
-      }
-
-      try {
-        if (typeof Html5Qrcode === "undefined") {
-          throw new Error("مكتبة فك الشفرة غير جاهزة.");
-        }
-        const fileScanner = new Html5Qrcode("modal-qr-reader-hidden", { verbose: false });
-        const decodedText = await fileScanner.scanFile(file, true);
-        window.handleCardScanDecoded(decodedText);
-      } catch (err) {
-        console.error("Photo scan error:", err);
-        if (alertBox) {
-          alertBox.style.display = "block";
-          alertBox.style.background = "#fef2f2";
-          alertBox.style.border = "2px solid #ef4444";
-          alertBox.style.color = "#b91c1c";
-          alertBox.innerHTML = `
-            <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-circle-exclamation"></i> تعذر قراءة الـ QR من الصورة</div>
-            <div style="font-size: 0.82rem;">يرجى التأكد من تصوير الكارنيه بإضاءة جيدة والتركيز على كود الـ QR، أو إدخال الكود يدويًا.</div>
-          `;
-        }
-      } finally {
-        inputEl.value = "";
-      }
-    };
+    let currentModalFacingMode = "environment"; // default to rear camera
 
     window.startCardScanInsideModal = async function() {
       console.log("📷 [Diagnostic] startCardScanInsideModal requested");
@@ -605,89 +562,82 @@
       const alertBox = document.getElementById("scan-feedback-alert");
       if (alertBox) alertBox.style.display = "none";
 
+      if (camContainer) {
+        camContainer.style.display = "block";
+      }
+
+      // If already scanning, cleanly stop previous session without hiding container
+      if (modalQrScannerInstance) {
+        try {
+          await modalQrScannerInstance.stop();
+          modalQrScannerInstance.clear();
+        } catch(e) {}
+        modalQrScannerInstance = null;
+      }
+
       if (typeof Html5Qrcode === "undefined") {
-        console.log("Html5Qrcode not yet loaded, waiting 200ms...");
+        console.log("Html5Qrcode not yet loaded, waiting 250ms...");
         await new Promise(r => setTimeout(r, 250));
       }
 
       if (typeof Html5Qrcode === "undefined") {
-        alert("جارٍ تحميل مكتبة الكاميرا. يرجى الضغط مرة أخرى أو استخدام زر (التقاط / رفع صورة).");
+        alert("جارٍ تحميل مشغل الكاميرا. يرجى الانتظار لحظة ثم المحاولة مرة أخرى.");
         return;
       }
 
-      // Check for file:/// protocol restrictions
-      const isFileProtocol = window.location.protocol === "file:";
-      if (isFileProtocol && (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
-        if (alertBox) {
-          alertBox.style.display = "block";
-          alertBox.style.background = "#fffbeb";
-          alertBox.style.border = "2px solid #f59e0b";
-          alertBox.style.color = "#92400e";
-          alertBox.innerHTML = `
-            <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-triangle-exclamation"></i> تنبيه أمان المتصفح (ملف محلي)</div>
-            <div style="font-size: 0.82rem;">المتصفح يقيد الفيديو المباشر عند فتح الملفات المباشرة. يُفضل تشغيل النظام عبر <strong>(تشغيل_النظام_فورا.bat)</strong> أو يمكنك الآن التقاط صورة الكارنيه فوراً:</div>
-            <button type="button" class="btn btn-outline btn-sm" onclick="triggerCardPhotoCapture()" style="margin-top: 6px; background: white;">
-              <i class="fa-solid fa-camera"></i> اضغط هنا لتصوير الكارنيه بالصورة
-            </button>
-          `;
-        }
-        window.triggerCardPhotoCapture();
-        return;
-      }
-
-      if (camContainer) camContainer.style.display = "block";
-      window.stopCardScanInsideModal();
-
-      const config = {
-        fps: 20,
-        qrbox: (w, h) => {
-          const size = Math.floor(Math.min(w || 250, h || 250) * 0.85);
-          return { width: size, height: size };
-        }
-      };
-
-      modalQrScannerInstance = new Html5Qrcode("modal-qr-reader");
-
-      let scanStarted = false;
-
-      // Strategy 1: Ideal environment (rear) camera with flexible constraint
       try {
-        await modalQrScannerInstance.start(
-          { facingMode: { ideal: "environment" } },
-          config,
-          (decodedText) => window.handleCardScanDecoded(decodedText),
-          () => {}
-        );
-        scanStarted = true;
-        console.log("✅ [Diagnostic] Camera started with ideal environment constraint.");
-      } catch (e1) {
-        console.warn("Strategy 1 failed, trying enumerated cameras:", e1.message);
-      }
+        modalQrScannerInstance = new Html5Qrcode("modal-qr-reader", { verbose: false });
 
-      // Strategy 2: Enumerate devices and pick available camera
-      if (!scanStarted && typeof Html5Qrcode.getCameras === "function") {
+        const config = {
+          fps: 25,
+          qrbox: (w, h) => {
+            const minEdge = Math.min(w || 250, h || 250);
+            const size = Math.floor(minEdge * 0.82);
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.0
+        };
+
+        let scanStarted = false;
+
+        // Strategy 1: Ideal facingMode
         try {
-          const devices = await Html5Qrcode.getCameras();
-          if (devices && devices.length > 0) {
-            // Prefer rear camera if available, else first camera (e.g. laptop webcam)
-            const chosen = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1] || devices[0];
-            await modalQrScannerInstance.start(
-              chosen.id,
-              config,
-              (decodedText) => window.handleCardScanDecoded(decodedText),
-              () => {}
-            );
-            scanStarted = true;
-            console.log("✅ [Diagnostic] Camera started with device ID:", chosen.label || chosen.id);
-          }
-        } catch (e2) {
-          console.warn("Strategy 2 failed, trying generic video constraint:", e2.message);
+          await modalQrScannerInstance.start(
+            { facingMode: { ideal: currentModalFacingMode } },
+            config,
+            (decodedText) => window.handleCardScanDecoded(decodedText),
+            () => {}
+          );
+          scanStarted = true;
+          console.log("✅ [Diagnostic] Modal camera started with facing mode:", currentModalFacingMode);
+        } catch (e1) {
+          console.warn("FacingMode strategy note:", e1.message);
         }
-      }
 
-      // Strategy 3: Generic fallback
-      if (!scanStarted) {
-        try {
+        // Strategy 2: Camera device selection
+        if (!scanStarted && typeof Html5Qrcode.getCameras === "function") {
+          try {
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+              const chosen = (currentModalFacingMode === "environment")
+                ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1])
+                : (devices.find(d => /front|user/i.test(d.label)) || devices[0]);
+              await modalQrScannerInstance.start(
+                chosen.id,
+                config,
+                (decodedText) => window.handleCardScanDecoded(decodedText),
+                () => {}
+              );
+              scanStarted = true;
+              console.log("✅ [Diagnostic] Modal camera started with device:", chosen.label || chosen.id);
+            }
+          } catch (e2) {
+            console.warn("Enumerated cameras strategy note:", e2.message);
+          }
+        }
+
+        // Strategy 3: Generic fallback
+        if (!scanStarted) {
           await modalQrScannerInstance.start(
             {},
             config,
@@ -695,30 +645,40 @@
             () => {}
           );
           scanStarted = true;
-          console.log("✅ [Diagnostic] Camera started with default config.");
-        } catch (e3) {
-          console.warn("All live camera strategies failed:", e3);
+          console.log("✅ [Diagnostic] Modal camera started with default constraints.");
         }
-      }
 
-      // Fallback: If camera still cannot open (e.g. permission blocked)
-      if (!scanStarted) {
+        // Ensure video is strictly inline on iOS and Android (never pop up fullscreen)
+        setTimeout(() => {
+          document.querySelectorAll("#modal-camera-container video").forEach(v => {
+            v.setAttribute("playsinline", "true");
+            v.setAttribute("webkit-playsinline", "true");
+            v.setAttribute("muted", "true");
+            v.setAttribute("autoplay", "true");
+            v.playsInline = true;
+          });
+        }, 150);
+
+      } catch (err) {
+        console.error("Camera startup error inside modal:", err);
         if (camContainer) camContainer.style.display = "none";
         if (alertBox) {
           alertBox.style.display = "block";
-          alertBox.style.background = "#fffbeb";
-          alertBox.style.border = "2px solid #f59e0b";
-          alertBox.style.color = "#92400e";
-          alertBox.innerHTML = `
-            <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-video-slash"></i> تعذر الوصول إلى بث الفيديو المباشر</div>
-            <div style="font-size: 0.82rem;">يرجى التأكد من السماح بإذن الكاميرا للمتصفح، أو يمكنك تصوير الكارنيه بالصورة بسهولة:</div>
-            <button type="button" class="btn btn-outline btn-sm" onclick="triggerCardPhotoCapture()" style="margin-top: 6px; background: white;">
-              <i class="fa-solid fa-camera"></i> تصوير الكارنيه عبر الكاميرا الآن
-            </button>
-          `;
+          alertBox.style.background = "#fef2f2";
+          alertBox.style.border = "2px solid #ef4444";
+          alertBox.style.color = "#991b1b";
+          let msg = "تعذر تشغيل الكاميرا داخل المتصفح. تأكد من إعطاء إذن الكاميرا للمتصفح في شريط العنوان.";
+          if (err.name === "NotAllowedError" || err.message?.includes("Permission")) {
+            msg = "يرجى السماح باستخدام الكاميرا من إعدادات المتصفح لمسح الكارنيهات داخل الموقع.";
+          }
+          alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <strong>${msg}</strong>`;
         }
-        window.triggerCardPhotoCapture();
       }
+    };
+
+    window.flipCardScanInsideModal = async function() {
+      currentModalFacingMode = currentModalFacingMode === "environment" ? "user" : "environment";
+      await window.startCardScanInsideModal();
     };
 
     window.stopCardScanInsideModal = function() {
@@ -738,7 +698,7 @@
       if (camContainer) camContainer.style.display = "none";
 
       // Stop native MediaStreamTracks on any video element
-      document.querySelectorAll("video").forEach(v => {
+      document.querySelectorAll("#modal-camera-container video").forEach(v => {
         if (v.srcObject && typeof v.srcObject.getTracks === "function") {
           v.srcObject.getTracks().forEach(t => { try { t.stop(); } catch(e){} });
           v.srcObject = null;
@@ -1101,12 +1061,13 @@
     async function syncCloudStudents() {
       const badge = document.getElementById("cloud-sync-status-badge");
       try {
-        if (badge) badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-primary"></i> جارٍ الاتصال بسحابة Firebase أونلاين...`;
-        const cloudList = await getAllStudents();
+        if (badge) badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-primary"></i> جارٍ مزامنة الطلاب من سحابة Firebase...`;
+        const cloudList = await getAllStudents(true);
         if (Array.isArray(cloudList) && cloudList.length > 0) {
           cachedStudents = cloudList;
+          saveStoredStudents(cachedStudents);
           window.renderStudentsTableImmediate();
-          if (badge) badge.innerHTML = `<i class="fa-solid fa-cloud-check text-success"></i> متصل بسحابة Firebase أونلاين (${cloudList.length} طالب)`;
+          if (badge) badge.innerHTML = `<i class="fa-solid fa-cloud-check text-success"></i> متصل بالسحابة أونلاين (${cloudList.length} طالب)`;
         } else {
           if (badge) badge.innerHTML = `<i class="fa-solid fa-cloud-check text-success"></i> متصل بسحابة Firebase أونلاين`;
         }
@@ -1128,11 +1089,20 @@
       });
     } catch(e) {}
 
-    // Listen for background updates
+    // Listen for real-time background updates from OTHER devices
     window.addEventListener("church_students_updated", (e) => {
       if (e.detail && Array.isArray(e.detail)) {
         cachedStudents = e.detail;
         window.renderStudentsTableImmediate();
+        const badge = document.getElementById("cloud-sync-status-badge");
+        if (badge) badge.innerHTML = `<i class="fa-solid fa-cloud-check text-success"></i> تم التحديث الفوري (${cachedStudents.length} طالب)`;
+      }
+    });
+
+    window.addEventListener("firebase_permission_error", () => {
+      const badge = document.getElementById("cloud-sync-status-badge");
+      if (badge) {
+        badge.innerHTML = `<a href="https://console.firebase.google.com/project/k-ilo-eb1f2/firestore/rules" target="_blank" style="color: #ef4444; font-weight: 700; text-decoration: underline;"><i class="fa-solid fa-triangle-exclamation"></i> مطلوب تفعيل قواعد Firebase (اضغط هنا)</a>`;
       }
     });
 

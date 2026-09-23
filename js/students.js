@@ -5,6 +5,7 @@
 
 import { 
   db, 
+  getDb,
   collection, 
   doc, 
   setDoc, 
@@ -119,10 +120,10 @@ export function getDemoStudents() {
     if (typeof localStorage !== 'undefined') {
       const data = localStorage.getItem(STUDENTS_STORAGE_KEY);
       if (!data) {
-        localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_STUDENTS));
-        return INITIAL_DEMO_STUDENTS;
+        return [];
       }
       const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
       return parsed.map(s => {
         const stageVal = mapLegacyGradeToStage(s.stage || s.grade);
         return {
@@ -136,7 +137,7 @@ export function getDemoStudents() {
   } catch (e) {}
 
   if (!memoryStudentsStore) {
-    memoryStudentsStore = [...INITIAL_DEMO_STUDENTS];
+    memoryStudentsStore = [];
   }
   return memoryStudentsStore;
 }
@@ -161,22 +162,27 @@ export function saveDemoStudents(students) {
 /**
  * Background silent synchronization from Cloud Firestore
  */
-async function syncStudentsFromCloud() {
+export async function syncStudentsFromCloud() {
   if (isCloudSyncing || typeof window === 'undefined') return;
   isCloudSyncing = true;
   try {
-    const snapshot = await getDocs(collection(db, "students"));
+    const dbObj = await getDb();
+    if (!dbObj || !dbObj.db || !dbObj.sdk) return;
+
+    const coll = dbObj.sdk.collection(dbObj.db, "students");
+    const snapshot = await dbObj.sdk.getDocs(coll);
     const list = [];
     if (snapshot && typeof snapshot.forEach === "function") {
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        if (data && data.name) {
+        if (data && (data.name || data.studentCode)) {
           const stageVal = mapLegacyGradeToStage(data.stage || data.grade);
           list.push({
+            studentId: docSnap.id,
             ...data,
             stage: stageVal,
             grade: stageVal,
-            studentCode: data.studentCode || data.studentId
+            studentCode: data.studentCode || docSnap.id
           });
         }
       });
@@ -186,17 +192,22 @@ async function syncStudentsFromCloud() {
       saveDemoStudents(list);
       window.dispatchEvent(new CustomEvent("church_students_updated", { detail: list }));
     }
+    return list;
   } catch (err) {
-    console.warn("syncStudentsFromCloud note:", err.message);
+    console.warn("syncStudentsFromCloud error:", err.message);
   } finally {
     isCloudSyncing = false;
   }
 }
 
 /**
- * Fetch all students instantly in 0ms from local cache, and sync in background
+ * Fetch all students with instant local response and immediate cloud sync
  */
-export async function getAllStudents() {
+export async function getAllStudents(forceCloud = false) {
+  if (forceCloud) {
+    const cloudList = await syncStudentsFromCloud();
+    if (cloudList && cloudList.length > 0) return cloudList;
+  }
   const localList = getDemoStudents();
 
   // Background non-blocking sync
@@ -373,12 +384,12 @@ export async function addStudent({ name, stage, grade, phone = "", studentCode =
   saveDemoStudents(list);
 
   // 2. Replicate to Cloud Firestore in Background (Non-blocking)
-  try {
-    setDoc(doc(db, "students", studentId), {
-      ...newStudent,
-      createdAt: serverTimestamp()
-    }).catch(err => console.warn("Background cloud sync note:", err.message));
-  } catch (e) {}
+  getDb().then(dbObj => {
+    if (dbObj && dbObj.db && dbObj.sdk) {
+      const docRef = dbObj.sdk.doc(dbObj.db, "students", studentId);
+      dbObj.sdk.setDoc(docRef, { ...newStudent }, { merge: true }).catch(err => console.warn("Cloud save note:", err.message));
+    }
+  });
 
   // 3. Non-blocking Activity Log
   try {
@@ -444,9 +455,12 @@ export async function updateStudent(studentId, { name, stage, grade, phone, stud
   saveDemoStudents(list);
 
   // 2. Sync to Cloud in Background
-  try {
-    updateDoc(doc(db, "students", studentId), updatedStudent).catch(() => {});
-  } catch (e) {}
+  getDb().then(dbObj => {
+    if (dbObj && dbObj.db && dbObj.sdk) {
+      const docRef = dbObj.sdk.doc(dbObj.db, "students", studentId);
+      dbObj.sdk.setDoc(docRef, updatedStudent, { merge: true }).catch(err => console.warn("Cloud update note:", err.message));
+    }
+  });
 
   try {
     logActivity("تعديل بيانات طالب", { studentId, studentName: updatedStudent.name }, studentId, "student").catch(() => {});
@@ -474,9 +488,12 @@ export async function deleteStudent(studentId) {
   const updatedList = list.filter(s => s.studentId !== studentId);
   saveDemoStudents(updatedList);
 
-  try {
-    deleteDoc(doc(db, "students", studentId)).catch(() => {});
-  } catch (e) {}
+  getDb().then(dbObj => {
+    if (dbObj && dbObj.db && dbObj.sdk) {
+      const docRef = dbObj.sdk.doc(dbObj.db, "students", studentId);
+      dbObj.sdk.deleteDoc(docRef).catch(err => console.warn("Cloud delete note:", err.message));
+    }
+  });
 
   try {
     logActivity("حذف طالب", { studentId }, studentId, "student").catch(() => {});

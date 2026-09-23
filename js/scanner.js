@@ -76,6 +76,7 @@ export async function initScanner(elementId, onSuccess, onError) {
       );
       isScanning = true;
       console.log("✅ Camera started with ideal facing mode:", currentFacingMode);
+      ensureVideoInline(elementId);
       return;
     } catch (facingErr) {
       console.warn("FacingMode failed, trying direct camera device selection:", facingErr.message);
@@ -93,6 +94,7 @@ export async function initScanner(elementId, onSuccess, onError) {
       );
       isScanning = true;
       console.log("✅ Camera started with device ID:", selectedCameraId);
+      ensureVideoInline(elementId);
     } else {
       throw new Error("لم يتم العثور على كاميرا متصلة بالجهاز.");
     }
@@ -208,4 +210,18 @@ function loadQrLibrary() {
     };
     document.head.appendChild(script);
   });
+}
+
+function ensureVideoInline(elementId) {
+  setTimeout(() => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.querySelectorAll("video").forEach(v => {
+      v.setAttribute("playsinline", "true");
+      v.setAttribute("webkit-playsinline", "true");
+      v.setAttribute("muted", "true");
+      v.setAttribute("autoplay", "true");
+      v.playsInline = true;
+    });
+  }, 100);
 }

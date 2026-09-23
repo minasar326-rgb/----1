@@ -6,6 +6,7 @@
 
 import { 
   db, 
+  getDb,
   collection, 
   doc, 
   getDoc, 
@@ -233,14 +234,14 @@ export async function recordStudentAttendance({ student, day, selectedParts, wee
   saveDemoAttendance(allRecords);
 
   // 4. Replicate to Cloud Firestore in Background (Non-blocking)
-  try {
-    for (const rec of recordsToSave) {
-      setDoc(doc(db, "attendance", rec.id), {
-        ...rec,
-        timestamp: serverTimestamp()
-      }).catch(err => console.warn("Background attendance sync note:", err.message));
+  getDb().then(dbObj => {
+    if (dbObj && dbObj.db && dbObj.sdk) {
+      for (const rec of recordsToSave) {
+        const docRef = dbObj.sdk.doc(dbObj.db, "attendance", rec.id);
+        dbObj.sdk.setDoc(docRef, { ...rec }, { merge: true }).catch(err => console.warn("Attendance cloud save note:", err.message));
+      }
     }
-  } catch (e) {}
+  });
 
   // 5. Activity Log in Background
   try {
