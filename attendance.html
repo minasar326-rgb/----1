@@ -838,7 +838,9 @@
     });
 
     document.getElementById("flip-camera-btn").addEventListener("click", async () => {
-      await toggleCameraFacing();
+      await toggleCameraFacing("attendance-qr-reader", async (decodedText) => {
+        await handleScannedCode(decodedText.trim());
+      });
     });
   </script>
 </body>

@@ -60,22 +60,21 @@ export async function initScanner(elementId, onSuccess, onError) {
         const size = Math.max(180, Math.floor(minEdge * 0.85));
         return { width: size, height: size };
       },
-      aspectRatio: 1.0,
       experimentalFeatures: {
         useBarCodeDetectorIfSupported: true
       }
     };
 
-    // 1. Try with facingMode (using ideal to prevent OverconstrainedError on front-only cameras)
+    // 1. Try with facingMode string ("environment" or "user")
     try {
       await html5QrCode.start(
-        { facingMode: { ideal: currentFacingMode } },
+        { facingMode: currentFacingMode },
         config,
         (decodedText) => handleDecodedCode(decodedText, onSuccess),
         () => {}
       );
       isScanning = true;
-      console.log("✅ Camera started with ideal facing mode:", currentFacingMode);
+      console.log("✅ Camera started with facing mode:", currentFacingMode);
       ensureVideoInline(elementId);
       return;
     } catch (facingErr) {
@@ -83,29 +82,50 @@ export async function initScanner(elementId, onSuccess, onError) {
     }
 
     // 2. Fallback: enumerate available cameras and pick the first / back camera
-    const devices = await Html5Qrcode.getCameras();
-    if (devices && devices.length > 0) {
-      const selectedCameraId = devices[devices.length - 1].id; // Often back camera is last
-      await html5QrCode.start(
-        selectedCameraId,
-        config,
-        (decodedText) => handleDecodedCode(decodedText, onSuccess),
-        () => {}
-      );
-      isScanning = true;
-      console.log("✅ Camera started with device ID:", selectedCameraId);
-      ensureVideoInline(elementId);
-    } else {
-      throw new Error("لم يتم العثور على كاميرا متصلة بالجهاز.");
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        const selectedCameraId = (currentFacingMode === "environment")
+          ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1]).id
+          : devices[0].id;
+        await html5QrCode.start(
+          selectedCameraId,
+          config,
+          (decodedText) => handleDecodedCode(decodedText, onSuccess),
+          () => {}
+        );
+        isScanning = true;
+        console.log("✅ Camera started with device ID:", selectedCameraId);
+        ensureVideoInline(elementId);
+        return;
+      }
+    } catch (deviceErr) {
+      console.warn("Device enum failed:", deviceErr.message);
     }
+
+    // 3. Fallback: Try opposite facing mode
+    const fallbackMode = currentFacingMode === "environment" ? "user" : "environment";
+    await html5QrCode.start(
+      { facingMode: fallbackMode },
+      config,
+      (decodedText) => handleDecodedCode(decodedText, onSuccess),
+      () => {}
+    );
+    isScanning = true;
+    console.log("✅ Camera started with fallback facing mode:", fallbackMode);
+    ensureVideoInline(elementId);
 
   } catch (err) {
     console.error("Camera startup error:", err);
     isScanning = false;
 
-    let errMsg = "تعذر الوصول إلى الكاميرا. يرجى التأكد من إعطاء المتصفح إذن الكاميرا أو استخدام الإدخال اليدوي بالكود.";
-    if (err.name === "NotAllowedError" || err.message?.includes("Permission")) {
-      errMsg = "يرجى السماح باستخدام الكاميرا من إعدادات المتصفح لمسح الكارنيهات.";
+    let errMsg = "تعذر تشغيل الكاميرا: " + (err.message || err);
+    if (err.name === "NotAllowedError" || String(err).includes("Permission")) {
+      errMsg = "تم رفض إذن الكاميرا. يرجى الضغط على علامة القفل 🔒 في شريط عنوان المتصفح والسماح للكاميرا.";
+    } else if (err.name === "NotFoundError" || String(err).includes("NotFound")) {
+      errMsg = "لم يتم العثور على كاميرا في هذا الجهاز.";
+    } else if (err.name === "NotReadableError") {
+      errMsg = "الكاميرا مشغولة في تطبيق آخر على هاتفك.";
     }
     showToast(errMsg, "error");
     if (onError) onError(err);
@@ -115,7 +135,7 @@ export async function initScanner(elementId, onSuccess, onError) {
 /**
  * Switch between Front and Rear Cameras
  */
-export async function toggleCameraFacing(elementId, onSuccess, onError) {
+export async function toggleCameraFacing(elementId = "attendance-qr-reader", onSuccess, onError) {
   currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
   await stopScanner();
   await initScanner(elementId, onSuccess, onError);
